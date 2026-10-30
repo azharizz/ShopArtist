@@ -35,7 +35,7 @@ export async function renderRoomViews(room: RoomDesign, shelves: Shelf[]) {
 export async function reviewRoom(room: RoomDesign, shelves: Shelf[], brief: string) {
   const image = await renderRoomViews(room, shelves);
   const response = await createAgentClient().messages.create({ model: process.env.AI_VISION_MODEL || "nvidia/Nemotron-3.5-Super-VL", max_tokens: 4096,
-    system: "You are a skeptical, honest and accurate shop layout reviewer. Assess only the visible geometry. These simplified views omit walls, lighting, textures and text. Mention only clearly visible layout problems. Do not invent features or claim compliance. Return exactly VERDICT: PASS or FAIL followed by CRITIQUE: and a concise explanation.",
+    system: "You are a skeptical, honest and accurate shop layout reviewer. Assess only the visible geometry. These are the same room from three rotated camera viewpoints; apparent left/right wall changes are expected. The floor is visible, but walls, door, lighting, textures and text are omitted. Do not infer the door or wall positions. Mention only clearly visible layout problems. Do not invent features or claim compliance. Return exactly VERDICT: PASS or FAIL followed by CRITIQUE: and a concise explanation.",
     messages: [{ role: "user", content: [{ type: "text", text: `Shop concept: ${brief}. Review these top, entrance and three-quarter views for coherence and obstruction.` }, { type: "image", source: { type: "base64", media_type: "image/png", data: image.toString("base64") } }] }],
   });
   const text = response.content.filter(block => block.type === "text").map(block => block.text).join("\n");
