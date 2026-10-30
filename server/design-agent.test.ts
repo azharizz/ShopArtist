@@ -92,7 +92,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
         assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Only add non-shelf assets whose details")));
       }
       if (calls === 9) assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Rejected proposals") && m.content.includes("Quiet romance")));
-      args = { directions: calls === 8 ? [{ ...make("Invalid decoration", "#aabbcc"), description: "A cozy interior decorated with curtains and reading benches." }, direction] : [direction] };
+      args = { directions: calls === 8 ? [{ ...make("Invalid decoration", "#aabbcc"), description: "A cozy interior decorated with curtains and reading benches." }, direction] : calls === 9 ? JSON.stringify([direction]) : [direction] };
       assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Charming")));
       assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Padded bench") && m.content.includes("coloring")));
     }

@@ -72,7 +72,7 @@ export function TasteStudio({ brief, onBrief, room, forNewProject, study, onStud
     try { const result = await api<{ results: TasteEntity[] }>(`/qloo/search?query=${encodeURIComponent(inspirationQuery)}`); setMatches(result.results); }
     catch (e) { setError((e as Error).message); } finally { setSearchBusy(false); }
   }
-  const dirty = !!study && (brief.location !== study.brief.location || brief.direction !== study.brief.direction || brief.purpose !== study.brief.purpose || brief.inspirations.some(item => !study.brief.inspirations.includes(item)));
+  const dirty = !!study && (brief.location !== study.brief.location || brief.direction !== study.brief.direction || brief.purpose !== study.brief.purpose || JSON.stringify(brief.inspirations) !== JSON.stringify(study.brief.inspirations));
   async function research() {
     setBusy(true); setError(""); onStudy(null); onSelect("");
     try { const result = await api<DesignStudy>("/ai/research", { brief, room, forNewProject }); onStudy(result); }

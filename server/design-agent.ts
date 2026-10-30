@@ -139,7 +139,10 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
           results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify(result) });
         } else if (call.name === "create_design_directions") {
           if (!research) throw new Error("Call research_taste successfully before creating directions.");
-          const { directions } = outputSchema.parse(call.input);
+          const raw = call.input as { directions?: unknown };
+          let directionsInput = raw?.directions;
+          if (typeof directionsInput === "string") { try { directionsInput = JSON.parse(directionsInput); } catch { throw new Error("Directions must be a JSON array of design objects."); } }
+          const { directions } = outputSchema.parse({ directions: directionsInput });
           const evidence = [...research.anchors, ...research.tags, ...research.artists, ...research.brands, ...(research.places ?? [])];
           const issues: string[] = [];
           for (const candidate of directions) {
@@ -165,7 +168,7 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
           }
           if (process.env.AI_DEBUG === "1") console.info("AI Agent direction validation", { accepted: pendingDirections.length, rejected: issues });
           if (pendingDirections.length >= 2)
-            return { id: randomUUID(), brief: { ...brief, tags: chosenTags, inspirations: resolvedInspirations }, research, directions: pendingDirections.slice(0, 3), createdAt: new Date().toISOString() };
+            return { id: randomUUID(), brief: { ...brief, tags: chosenTags }, research, directions: pendingDirections.slice(0, 3), createdAt: new Date().toISOString() };
           results.push({ type: "tool_result", tool_use_id: call.id, content: `${issues.length ? `Rejected proposals: ${issues.join(" ")} ` : ""}Saved direction names: ${pendingDirections.map(direction => direction.name).join(", ") || "none"}. Call create_design_directions with ${pendingDirections.length ? "at least one new direction" : "two distinct directions"} whose name, design and fixture idea differ from every saved direction. Do not repeat a saved name.` });
         } else throw new Error("Unknown tool.");
       } catch (error) {
