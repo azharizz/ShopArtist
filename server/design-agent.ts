@@ -168,7 +168,7 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
   const pendingDirections: DesignDirection[] = [];
   const startedAt = Date.now();
   report({ phase: "brief", label: "Reading your idea", detail: (brief.direction || brief.purpose).slice(0, 90), status: "done" });
-  for (let round = 0; round < 24; round++) {
+  for (let round = 0; round < 40; round++) {
     if (pendingDirections.length && Date.now() - startedAt >= 300_000) break;
     report({ phase: "thinking", label: `Agent step ${round + 1}`, detail: "Deciding the next move", status: "active" });
     const names = !research ? researchToolNames(searches)
