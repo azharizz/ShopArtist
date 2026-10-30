@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { AssetRenderContext } from "./context";
 
 export function renderAsset(ctx: AssetRenderContext) {
-  const { fixture, room, shelves, placements, products, selected, editMode, group, w, d, wood, frame, accent, box, round, label, geometries, materials, productMeshes } = ctx;
+  const { group, round, geometries, materials } = ctx;
 
 
           round(0.23, 0.45, 0, 0.23, 0, "#b77e60", group);

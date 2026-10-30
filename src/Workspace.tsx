@@ -10,7 +10,6 @@ import {
   Palette,
   Plus,
   Shirt,
-  Sparkles,
   Store,
 } from "lucide-react";
 import App from "./App";

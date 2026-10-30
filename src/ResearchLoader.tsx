@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ProgressEvent } from "./api";
 
 /** The visible acts of each run, in order. Server phases map onto these. */
@@ -69,8 +69,8 @@ export function ResearchLoader({
   const { acts, actOf, quips } = script;
   const [elapsed, setElapsed] = useState(0);
   const [quip, setQuip] = useState(0);
-  const logEnd = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  const timerRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
     const tick = window.setInterval(() => setElapsed((n) => n + 1), 1000);
     const rotate = window.setInterval(
       () => setQuip((n) => (n + 1) % quips.length),
@@ -80,9 +80,9 @@ export function ResearchLoader({
       window.clearInterval(tick);
       window.clearInterval(rotate);
     };
-  }, []);
-  useEffect(() => {
-    logEnd.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [quips.length]);
+  const logEndRef = useCallback((node: HTMLDivElement | null) => {
+    node?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [events.length]);
 
   const latest = events.at(-1);
@@ -97,7 +97,7 @@ export function ResearchLoader({
   const seconds = String(elapsed % 60).padStart(2, "0");
 
   return (
-    <div className="research-loader" role="status" aria-live="polite">
+    <div ref={timerRef} className="research-loader" role="status" aria-live="polite">
       <div className="loader-rays" aria-hidden="true" />
       <div className="loader-dots" aria-hidden="true" />
 
@@ -189,7 +189,7 @@ export function ResearchLoader({
                 </span>
               </div>
             ))}
-            <div ref={logEnd} />
+            <div ref={logEndRef} />
           </div>
           <footer>
             <span className="loader-bar" aria-hidden="true">

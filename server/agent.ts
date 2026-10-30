@@ -6,7 +6,6 @@ import {
   interiorStyles,
   stylePalettes,
   validateRoom,
-  type FixtureKind,
   type RoomDesign,
 } from "../shared/room.js";
 import type { Shelf } from "../shared/types.js";

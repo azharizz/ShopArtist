@@ -1,8 +1,7 @@
-import * as THREE from "three";
 import type { AssetRenderContext } from "./context";
 
 export function renderAsset(ctx: AssetRenderContext) {
-  const { fixture, room, shelves, placements, products, selected, editMode, group, w, d, wood, frame, accent, box, round, label, geometries, materials, productMeshes } = ctx;
+  const { group, wood, frame, accent, box, round } = ctx;
 
           round(0.47, 0.07, 0, 0.78, 0, wood, group);
           round(0.09, 0.72, 0, 0.37, 0, frame, group);

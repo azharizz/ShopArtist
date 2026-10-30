@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { AssetDefinition } from "../shared/assets/types";
 import { api } from "./api";
 import {
@@ -20,7 +20,6 @@ import {
 import {
   applyArrangement,
   fixtureCatalog,
-  fixtureKinds,
   fixturesOverlap,
   roomPlacementWarnings,
   focusLabels,
@@ -74,7 +73,8 @@ export function RoomEditor({
   const [error, setError] = useState("");
   const [addKind, setAddKind] = useState<FixtureKind>("plant");
   const [assets, setAssets] = useState<AssetDefinition[]>(Object.values(fixtureCatalog));
-  useEffect(() => {
+  const editorRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
     let active = true;
     const refresh = () => { void api<AssetDefinition[]>("/assets").then(items => { if (active) setAssets(items); }).catch(() => { if (active) setError("Could not load your asset catalog. Reopen the editor to retry."); }); };
     refresh(); window.addEventListener("focus", refresh);
@@ -139,7 +139,7 @@ export function RoomEditor({
     );
   }
   return (
-    <div className="interior-studio">
+    <div ref={editorRef} className="interior-studio">
       <div className="design-header">
         <div>
           <span className="eyebrow">THE WHOLE SHOP, YOUR WAY</span>

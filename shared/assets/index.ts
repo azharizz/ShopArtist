@@ -1,4 +1,3 @@
-import type { FixtureKind } from "../room.js";
 import type { AssetDefinition } from "./types.js";
 import shelf from "./shelf.js";
 import cashier from "./cashier.js";

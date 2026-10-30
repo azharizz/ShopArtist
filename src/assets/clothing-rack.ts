@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { AssetRenderContext } from "./context";
 
 export function renderAsset(ctx: AssetRenderContext) {
-  const { fixture, room, shelves, placements, products, selected, editMode, group, w, d, wood, frame, accent, box, round, label, geometries, materials, productMeshes } = ctx;
+  const { group, frame, accent, box } = ctx;
 
           for (const x of [-0.82, 0.82]) {
             box(0.07, 1.85, 0.07, x, 0.93, 0, frame, group);

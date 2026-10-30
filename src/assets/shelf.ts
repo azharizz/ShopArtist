@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { AssetRenderContext } from "./context";
 
 export function renderAsset(ctx: AssetRenderContext) {
-  const { fixture, room, shelves, placements, products, selected, editMode, group, w, d, wood, frame, accent, box, round, label, geometries, materials, productMeshes } = ctx;
+  const { fixture, room, shelves, placements, products, selected, editMode, group, w, d, wood, frame, box, label, geometries, materials, productMeshes } = ctx;
 
           const shelf = shelves.find((s) => s.id === fixture.shelfId)!;
           const usable = shelf.width / 100;
