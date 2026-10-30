@@ -77,7 +77,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     else {
       name = "create_design_directions";
       const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal. ".repeat(7), evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
-      const direction = calls === 9 ? make("Vibrant stories", "#50a080") : make("Quiet romance", "#c05080");
+      const direction = calls >= 10 ? make(`Vibrant stories ${calls}`, ["#50a080", "#304080", "#a05020"][calls - 10] ?? "#a05020") : make("Quiet romance", "#c05080");
       if (calls === 5) direction.description = "Short description under 500 chars";
       if (calls === 6) {
         assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("not a placeholder")));
@@ -91,6 +91,8 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
         direction.additions = [{ kind: customAsset.id, x: 0, z: -2, rotation: 0, reason: "Cozy display" }];
         assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Only add non-shelf assets whose details")));
       }
+      if (calls === 9) { direction.name = "Same room, new title"; direction.additions = [{ kind: customAsset.id, x: 0, z: -2, rotation: 0, reason: "Cozy display" }]; }
+      if (calls === 10) assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("visually identical")));
       if (calls === 9) assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Rejected proposals") && m.content.includes("Quiet romance")));
       args = { directions: calls === 8 ? [{ ...make("Invalid decoration", "#aabbcc"), evidence_ids: [] }, direction] : calls === 9 ? JSON.stringify([direction]) : [direction] };
       assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Charming")));
@@ -103,8 +105,8 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     const shelves = seed().shelves;
     let reviews = 0;
     const result = await runDesignAgent(brief, createRoom(["coffee", "books"], "modern"), shelves, [...Object.values(fixtureCatalog), customAsset], async () => { if (reviews++ === 0) return { acceptable: false, critique: "The layout needs inspection.", uncertain: false }; throw new Error("review service unavailable"); });
-    assert.equal(calls, 9); assert.equal(result.research.source, "qloo"); assert.equal(result.research.points.length, 1);
-    assert.deepEqual(result.brief.tags, [tag]); assert.equal(result.directions.length, 2);
+    assert.equal(calls, 12); assert.equal(result.research.source, "qloo"); assert.equal(result.research.points.length, 1);
+    assert.deepEqual(result.brief.tags, [tag]); assert.equal(result.directions.length, 4);
     assert.equal(result.directions[0].visualReview?.acceptable, false);
     assert.match(result.directions[0].visualReview?.critique ?? "", /inspection/);
     assert.equal(result.directions[1].visualReview?.available, false);
