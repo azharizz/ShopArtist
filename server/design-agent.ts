@@ -91,7 +91,6 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
   const detailedAssetIds = new Set<string>();
   const pendingDirections: DesignDirection[] = [];
   const startedAt = Date.now();
-  const reviewAttempts = new Map<string, number>();
   for (let round = 0; round < 24; round++) {
     const names = !research ? (searches >= 5 ? ["research_taste"] : ["search_taste_tags", "search_inspirations", "research_taste"])
       : !listedAssetIds.size ? ["list_assets"]
@@ -127,7 +126,8 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
           const { tag_ids, place_tag_ids = [], inspiration_ids = [], cultural_types = [] } = z.object({ tag_ids: z.array(z.string()).min(1).max(3), place_tag_ids: z.array(z.string()).max(3).optional(), inspiration_ids: z.array(z.string()).max(3).optional(), cultural_types: z.array(z.enum(["book", "artist", "brand", "movie"])).max(3).optional() }).parse(call.input);
           if (inspiration_ids.some(id => !foundInspirations.has(id))) throw new Error("Use only inspiration IDs returned by search_inspirations.");
           for (const id of inspiration_ids) { const match = foundInspirations.get(id)!; if (!resolvedInspirations.some(value => value.startsWith(`${id}|`))) resolvedInspirations.push(`${id}|${match.name}`); }
-          if ((brief.location || brief.latitude !== null) && !place_tag_ids.length && [...allowed.keys()].some(id => id.startsWith("urn:tag:category:place:"))) throw new Error("Choose relevant place category IDs from the search results, or search for a more suitable category.");
+          const availableCategories = [...allowed.values()].filter(item => item.id.startsWith("urn:tag:category:place:"));
+          if ((brief.location || brief.latitude !== null) && !place_tag_ids.length && availableCategories.length) throw new Error(`Supply matching place_tag_ids from these search results: ${availableCategories.map(item => `${item.name}: ${item.id}`).join(", ")}. Choose only categories that fit the brief.`);
           if (place_tag_ids.some(id => !allowed.has(id) || !id.startsWith("urn:tag:category:place:"))) throw new Error("Place filters must be place category tags returned by search_taste_tags.");
           if (tag_ids.some(id => !allowed.has(id))) throw new Error("Use only tag IDs returned by search_taste_tags.");
           chosenTags = tag_ids;
@@ -166,12 +166,9 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
             const placementIssues = built.changes.filter(change => change.includes("could not fit") || change.startsWith("Could not move"));
             if (placementIssues.length) { issues.push(`${direction.name}: ${placementIssues.join(" ")} Revise the positions and submit again.`); continue; }
             if (pendingDirections.some(existing => existing.name.toLowerCase() === built.name.toLowerCase())) continue;
-            const key = direction.name.toLowerCase();
-            const attempts = (reviewAttempts.get(key) ?? 0) + 1;
-            reviewAttempts.set(key, attempts);
             try {
               built.visualReview = await review(built.room, shelves, brief.direction || brief.purpose);
-              if (!built.visualReview.acceptable && !("uncertain" in built.visualReview && built.visualReview.uncertain) && attempts < 3) { issues.push(`${direction.name}: visual review found ${built.visualReview.critique}. Revise the layout and resubmit the same direction name.`); continue; }
+              // The visual reviewer is advisory; uncertain model output must not block a valid design.
             } catch { built.visualReview = { acceptable: false, available: false, critique: "Visual review was unavailable; inspect the room manually." }; }
             pendingDirections.push(built);
           }

@@ -101,11 +101,14 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
   };
   try {
     const shelves = seed().shelves;
-    const result = await runDesignAgent(brief, createRoom(["coffee", "books"], "modern"), shelves, [...Object.values(fixtureCatalog), customAsset], async () => { throw new Error("review service unavailable"); });
+    let reviews = 0;
+    const result = await runDesignAgent(brief, createRoom(["coffee", "books"], "modern"), shelves, [...Object.values(fixtureCatalog), customAsset], async () => { if (reviews++ === 0) return { acceptable: false, critique: "The layout needs inspection.", uncertain: false }; throw new Error("review service unavailable"); });
     assert.equal(calls, 9); assert.equal(result.research.source, "qloo"); assert.equal(result.research.points.length, 1);
     assert.deepEqual(result.brief.tags, [tag]); assert.equal(result.directions.length, 2);
-    assert.equal(result.directions[0].visualReview?.available, false);
-    assert.match(result.directions[0].visualReview?.critique ?? "", /unavailable/);
+    assert.equal(result.directions[0].visualReview?.acceptable, false);
+    assert.match(result.directions[0].visualReview?.critique ?? "", /inspection/);
+    assert.equal(result.directions[1].visualReview?.available, false);
+    assert.match(result.directions[1].visualReview?.critique ?? "", /unavailable/);
     assert.equal(result.directions[0].evidence[0].id, evidence);
     assert.equal(result.directions[0].decisions?.[0].evidence[0].id, evidence);
     assert.notEqual(result.directions[0].room.accent, result.directions[1].room.accent);
