@@ -13,14 +13,16 @@ test("live Qloo research uses resolved inspiration, location and real results to
   const originalKey = process.env.QLOO_API_KEY;
   process.env.QLOO_API_KEY = "test-key";
   const calls: URL[] = [];
+  let rejectPlaceSignals = false;
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input)); calls.push(url);
     assert.equal(url.origin, "https://hackathon.api.qloo.com");
     assert.equal((init?.headers as Record<string, string>)["X-Api-Key"], "test-key");
     if (url.pathname === "/search") return Response.json({ results: [{ entity_id: anchor, name: "Blue Bottle Coffee", types: ["urn:entity:brand"] }] });
     if (url.pathname === "/v2/tags") return Response.json({ results: { tags: [{ id: "urn:tag:genre:music:jazz", name: "Jazz", type: "urn:tag:genre:music" }] } });
-    assert.equal(url.searchParams.get("signal.interests.entities"), anchor);
     const type = url.searchParams.get("filter.type");
+    if (type === "urn:entity:place" && rejectPlaceSignals && url.searchParams.has("signal.interests.tags")) return Response.json({ errors: [] }, { status: 400 });
+    if (!(type === "urn:entity:place" && rejectPlaceSignals)) assert.equal(url.searchParams.get("signal.interests.entities"), anchor);
     if (type === "urn:entity:place") return Response.json({ results: { entities: [{ entity_id: anchor, name: "Reference café", location: { lat: 40.7, lon: -73.9 }, properties: { short_description: "A café" } }] } });
     if (type === "urn:heatmap") return Response.json({ results: { heatmap: [{ location: { latitude: 40.7, longitude: -73.9 }, query: { affinity: 0.8 } }] } });
     if (type === "urn:tag") return Response.json({ results: { tags: [{ tag_id: "urn:tag:ambience:qloo:cozy", name: "Cozy" }] } });
@@ -33,6 +35,12 @@ test("live Qloo research uses resolved inspiration, location and real results to
     const result = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves);
     const agentResearch = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { placeTags: ["urn:tag:category:place:cafe"], includeProposal: false });
     assert.equal(agentResearch.proposal, undefined);
+    rejectPlaceSignals = true;
+    const fallback = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { placeTags: ["urn:tag:category:place:cafe"], includeProposal: false });
+    assert.equal(fallback.places?.[0].name, "Reference café");
+    assert.match(fallback.placesContext!, /taste affinity unavailable/);
+    assert.ok(fallback.warnings.some(w => w.includes("without a taste ranking")));
+    rejectPlaceSignals = false;
     assert.ok(calls.some(url => url.searchParams.get("filter.type") === "urn:entity:place" && url.searchParams.get("filter.tags") === "urn:tag:category:place:cafe"));
     assert.ok(calls.some(url => url.searchParams.get("filter.tag.types") === "urn:tag:decor:qloo"));
     assert.equal(result.source, "qloo");
