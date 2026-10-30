@@ -5,6 +5,10 @@ import { buildGeneratedGeometry, type GeneratedPart } from "../shared/generated-
 /** Render the editor's Three.js geometry in three orthographic views with a depth buffer. */
 export async function renderAssetViews(parts: GeneratedPart[]): Promise<Buffer> {
   const group = buildGeneratedGeometry(parts, { accent: "#658c78", wood: "#dac9aa", frame: "#424e47" });
+  return renderGroupViews(group);
+}
+
+export async function renderGroupViews(group: THREE.Group, views = [ { name: "Front", position: [0, .15, 5] }, { name: "Side", position: [5, .15, 0] }, { name: "Three-quarter", position: [4, 3, 5] } ]): Promise<Buffer> {
   const width = 1200, height = 500;
   const pixels = Buffer.alloc(width * height * 4);
   for (let i = 0; i < pixels.length; i += 4) { pixels[i] = 237; pixels[i + 1] = 236; pixels[i + 2] = 228; pixels[i + 3] = 255; }
@@ -13,7 +17,6 @@ export async function renderAssetViews(parts: GeneratedPart[]): Promise<Buffer> 
     group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(group), center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3()), extent = Math.max(size.x, size.y, size.z, .3) * .78;
-    const views = [ { name: "Front", position: [0, .15, 5] }, { name: "Side", position: [5, .15, 0] }, { name: "Three-quarter", position: [4, 3, 5] } ];
     views.forEach((view, panel) => {
       const camera = new THREE.OrthographicCamera(-extent, extent, extent, -extent, .01, 100);
       camera.position.copy(center).addScaledVector(new THREE.Vector3(...view.position as [number, number, number]).normalize(), 12);

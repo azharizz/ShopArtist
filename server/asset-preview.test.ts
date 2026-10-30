@@ -16,3 +16,14 @@ test("front preview resolves overlapping surfaces by depth", async () => {
   const pixel = (250 * info.width + 200) * info.channels;
   assert.ok(data[pixel] > data[pixel + 2], "the nearer red box must hide the blue box");
 });
+
+test("room review renders actual catalog fixtures in three views", async () => {
+  const { renderRoomViews } = await import("./room-review.js");
+  const { createRoom } = await import("../shared/room.js");
+  const { seed } = await import("./seed.js");
+  const image = await renderRoomViews(createRoom(["coffee", "books"], "modern"), seed().shelves);
+  const meta = await sharp(image).metadata();
+  assert.equal(meta.width, 1200);
+  assert.equal(meta.height, 500);
+  assert.ok(image.length > 10000);
+});

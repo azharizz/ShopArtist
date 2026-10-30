@@ -23,7 +23,8 @@ export function GeographicTasteMap({ points, location, places = [] }: { points: 
     for (const place of places) {
       if (place.latitude == null || place.longitude == null) continue;
       const latLng: L.LatLngExpression = [place.latitude, place.longitude]; bounds.extend(latLng);
-      L.circleMarker(latLng, { radius: 6, color: "#25212c", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }).bindTooltip(place.name).addTo(map);
+      const label = document.createElement("span"); label.textContent = place.name;
+      L.circleMarker(latLng, { radius: 6, color: "#25212c", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }).bindTooltip(label).addTo(map);
     }
     map.fitBounds(bounds, { padding: [15, 15], maxZoom: 13 });
     const timer = window.setTimeout(() => map.invalidateSize(), 150);
@@ -47,11 +48,12 @@ export function StudyResults({ study, selectedId, onSelect, compact = false, bui
         <h4>{direction.name}</h4><p>{direction.description}</p>
         <span className="direction-evidence">Qloo evidence: {direction.evidence.map(item => item.name).join(" · ")}</span>
         <span className="direction-colors" aria-label="Proposed colours">{[direction.room.wall, direction.room.floor, direction.room.accent].map((color, index) => <i key={index} style={{ background: color }} />)}</span>
+        {direction.visualReview && <span className="direction-review"><strong>Visual review {direction.visualReview.acceptable ? "passed" : "needs attention"}</strong>: {direction.visualReview.critique} <small>Review uses simplified room views without walls or lighting.</small></span>}
         {!!direction.decisions?.length && <span className="direction-decisions">{direction.decisions.map((decision, index) => <span key={index} style={{ display: "block", marginTop: 8 }}><strong>{decision.choice}</strong> — AI interpretation: {decision.interpretation}<br /><small>{decision.evidence.length ? `Qloo signals: ${decision.evidence.map(item => item.name).join(", ")}` : "AI suggestion based on the brief or practical needs"}</small></span>)}</span>}
         <span className="direction-changes">{direction.changes.length ? direction.changes.slice(0, 2).join(" · ") : "No fixture moves accepted; position them yourself in the editor."}</span>
         {buildAssets && direction.assetIdea && <span className="direction-asset"><strong>New fixture idea</strong><br />{direction.assetIdea.brief}<br /><small>{direction.assetIdea.reason}</small></span>}
       </button>)}</div></div>}
-    {!!research.places?.length && <section className="study-map-section"><h3>Local reference places</h3><p>Qloo returned these places for the selected taste and location. They are candidates for inspiration; check their relevance to your shop.</p><ul>{research.places.map(place => <li key={place.id}><strong>{place.name}</strong>{place.description && <> — {place.description}</>}</li>)}</ul></section>}
+    {!!research.places?.length && <section className="study-map-section"><h3>Local reference places</h3><p>{research.placesContext ?? "Qloo returned these places for the selected taste and location."} They are candidates for inspiration; check their relevance to your shop.</p><ul>{research.places.map(place => <li key={place.id}><strong>{place.name}</strong>{place.description && <> — {place.description}</>}</li>)}</ul></section>}
     <div className="study-map-section"><div><h3>Explore the local taste map</h3><p>See where affinity for this idea varies across {research.location || "the area"}.</p></div><GeographicTasteMap points={research.points} location={research.location} places={research.places} /></div>
     {research.warnings.map(w => <p className="taste-warning" key={w}>{w}</p>)}
   </div>;

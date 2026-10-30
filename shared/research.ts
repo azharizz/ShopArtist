@@ -23,6 +23,7 @@ export interface TasteResearch {
   artists: TasteEntity[];
   brands: TasteEntity[];
   places?: TasteEntity[];
+  placesContext?: string;
   points: TastePoint[];
   warnings: string[];
   proposal?: { room: RoomDesign; explanation: string; influences: string[] };
@@ -35,6 +36,7 @@ export interface DesignDirection {
   evidence: TasteEntity[];
   room: RoomDesign;
   changes: string[];
+  visualReview?: { acceptable: boolean; critique: string };
   decisions?: { choice: string; interpretation: string; evidence: TasteEntity[] }[];
   assetIdea?: { brief: string; reason: string; referenceId?: string };
 }

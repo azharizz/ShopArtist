@@ -116,7 +116,17 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
   const tags: TasteEntity[] = [...ambience, ...decor, ...generalTags].filter((tag, i, all) => all.findIndex(t => t.id === tag.id) === i).slice(0, 12);
   const artists = unpack(artistResult, "entities", "Artists");
   const brands = unpack(brandResult, "entities", "Brands");
-  const places = unpack(placeResult, "entities", "Local reference places");
+  let places: TasteEntity[];
+  let placesContext = options.placeTags?.length ? "Category-filtered taste-related places" : "Taste-related places; category not filtered";
+  if (placeResult.status === "rejected" && (location || brief.latitude !== null)) {
+    // shortcut: locality-only fallback is not taste-ranked; upgrade when Qloo supports the original signal combination.
+    try {
+      const fallback = await qloo("/v2/insights", { "filter.type": "urn:entity:place", ...(options.placeTags?.length ? { "filter.tags": options.placeTags.join(",") } : {}), ...(location ? { "filter.location.query": location } : { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) }), take: "8" });
+      places = Array.isArray(fallback.results?.entities) ? fallback.results.entities.map(entity).filter((item: TasteEntity | null): item is TasteEntity => !!item) : [];
+      placesContext = "Local category candidates only; taste affinity unavailable";
+      warnings.push("Taste-ranked places were unavailable; showing local category candidates without a taste ranking.");
+    } catch { places = []; warnings.push("Local reference places could not be loaded."); }
+  } else places = unpack(placeResult, "entities", "Local reference places");
   if (!tags.length && !artists.length && !brands.length) {
     const cause = [tagResult, artistResult, brandResult].find(r => r.status === "rejected");
     throw new Error(cause?.status === "rejected" ? cause.reason.message : "Qloo returned no taste results for this brief. Try another location or inspiration.");
@@ -130,5 +140,5 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
       return Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(affinity) ? [{ latitude, longitude, affinity }] : [];
     });
   }
-  return { source: "qloo", location: location || (brief.latitude !== null ? "Selected coordinates" : "No location"), anchors: [...anchors, ...tagSignals.map(id => ({ id, name: id.split(":").at(-1)!.replaceAll("_", " "), type: "tag" }))], tags, artists, brands, places, points, warnings, ...(options.includeProposal === false ? {} : { proposal: designFromTaste(brief, room, tags, shelves) }) };
+  return { source: "qloo", location: location || (brief.latitude !== null ? "Selected coordinates" : "No location"), anchors: [...anchors, ...tagSignals.map(id => ({ id, name: id.split(":").at(-1)!.replaceAll("_", " "), type: "tag" }))], tags, artists, brands, places, placesContext, points, warnings, ...(options.includeProposal === false ? {} : { proposal: designFromTaste(brief, room, tags, shelves) }) };
 }
