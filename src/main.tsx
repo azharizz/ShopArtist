@@ -5,6 +5,7 @@ import { api, type StateResponse } from "./api";
 import type { ProjectSummary } from "../shared/design";
 import "./styles.css";
 import "./pop.css";
+import "./scrollbars.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 async function start() {

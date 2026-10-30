@@ -1,0 +1,30 @@
+/* Shared pop-art scrollbars for the editor and asset catalog. */
+:root {
+  scrollbar-color: #14121a #ffd400;
+}
+
+* {
+  scrollbar-color: #14121a #ffd400;
+}
+
+/* Browsers without the standard scrollbar properties. */
+@supports not (scrollbar-color: #14121a #ffd400) {
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: #ffd400;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #14121a;
+    border: 3px solid #ffd400;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #1b4dff;
+  }
+}
