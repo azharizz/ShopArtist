@@ -4,7 +4,7 @@ import { createRoom, fixtureCatalog, fixtureKinds, validateRoom } from "../share
 import { assetRenderers } from "../src/assets/index.js";
 import { existsSync } from "node:fs";
 import { seed } from "./seed.js";
-import { runDesignAgent } from "./design-agent.js";
+import { runDesignAgent, buildDirection } from "./design-agent.js";
 import { getAssetDetails, listAssets } from "./asset-tools.js";
 import type { AssetDefinition } from "../shared/assets/types.js";
 
@@ -111,4 +111,12 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     assert.deepEqual(result.directions[0].room.fixtures.find(f => f.kind === customAsset.id)?.asset, customAsset);
     for (const direction of result.directions) assert.deepEqual(validateRoom(direction.room, shelves), []);
   } finally { globalThis.fetch = originalFetch; for (const key of keys) { if (original[key] === undefined) delete process.env[key]; else process.env[key] = original[key]; } }
+});
+
+
+test("out-of-bounds proposals report a boundary failure instead of silently moving fixtures", () => {
+  const room = createRoom(["coffee", "books"], "modern"), shelves = seed().shelves;
+  const direction = buildDirection({ name: "Test", description: "A practical and welcoming place for people.", evidence_ids: [evidence], decisions: [], style: "modern", wall: "#ffffff", floor: "#ffffff", accent: "#ffffff", window: "grid", moves: [{ fixture_id: room.fixtures[0].id, x: 999, z: 999, rotation: 0, reason: "Test" }], additions: [], asset_idea: { brief: "", reason: "", reference_id: "" } }, room, shelves, [{ id: evidence, name: "Charming", type: "tag" }], Object.values(fixtureCatalog));
+  assert.match(direction.changes[0], /could not fit/);
+  assert.equal(direction.room.fixtures[0].x, room.fixtures[0].x);
 });

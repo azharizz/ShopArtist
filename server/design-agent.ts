@@ -57,7 +57,7 @@ export function buildDirection(input: z.infer<typeof directionSchema>, room: Roo
     const original = next.fixtures.find(f => f.id === move.fixture_id);
     if (!original) { changes.push(`Could not move unknown fixture ${move.fixture_id}.`); continue; }
     const proposal = boundedFixture({ ...original, x: move.x, z: move.z, rotation: ((move.rotation % 360) + 360) % 360 }, next, shelves);
-    if (!proposal || Math.abs(proposal.x - move.x) > 0.01 || Math.abs(proposal.z - move.z) > 0.01 || next.fixtures.some(f => f.id !== original.id && fixturesOverlap(f, proposal, shelves))) { changes.push(`${original.label}: proposed move could not fit without overlap.`); continue; }
+    if (!proposal || Math.abs(proposal.x - move.x) > 0.01 || Math.abs(proposal.z - move.z) > 0.01 || next.fixtures.some(f => f.id !== original.id && fixturesOverlap(f, proposal, shelves))) { changes.push(`${original.label}: proposed move could not fit within the room or overlaps ${next.fixtures.filter(f => f.id !== original.id && proposal && fixturesOverlap(f, proposal, shelves)).map(f => f.label).join(", ") || "a room boundary"}.`); continue; }
     Object.assign(original, proposal);
     changes.push(`${original.label}: ${move.reason}`);
   }
@@ -66,7 +66,7 @@ export function buildDirection(input: z.infer<typeof directionSchema>, room: Roo
     const entry = catalog.find(asset => asset.id === add.kind);
     if (!entry || entry.id === "shelf") continue;
     const proposal = boundedFixture({ id: randomUUID(), kind: entry.id as Fixture["kind"], label: entry.label, x: add.x, z: add.z, rotation: ((add.rotation % 360) + 360) % 360, ...(entry.geometry ? { asset: entry } : {}) }, next, shelves);
-    if (!proposal || Math.abs(proposal.x - add.x) > 0.01 || Math.abs(proposal.z - add.z) > 0.01 || next.fixtures.some(f => fixturesOverlap(f, proposal, shelves))) { changes.push(`${entry.label}: proposed addition could not fit without overlap.`); continue; }
+    if (!proposal || Math.abs(proposal.x - add.x) > 0.01 || Math.abs(proposal.z - add.z) > 0.01 || next.fixtures.some(f => fixturesOverlap(f, proposal, shelves))) { changes.push(`${entry.label}: proposed addition could not fit within the room or overlaps ${next.fixtures.filter(f => proposal && fixturesOverlap(f, proposal, shelves)).map(f => f.label).join(", ") || "a room boundary"}.`); continue; }
     next.fixtures.push(proposal); changes.push(`${entry.label}: ${add.reason}`);
   }
   if (validateRoom(next, shelves).length) throw new Error("The AI Agent produced an invalid floor plan. Please retry.");
@@ -77,7 +77,7 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
   if (!(brief.direction || brief.purpose).trim()) throw new Error("Describe the shop idea first, so the AI Agent can research the right taste.");
   const client = createAgentClient();
   const model = process.env.NEBIUS_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507";
-  const messages: MessageParam[] = [{ role: "user", content: JSON.stringify({ idea: brief.direction, purpose: brief.purpose, location: brief.location || "unspecified", existingTags: brief.tags.filter(x => x.startsWith("urn:tag:")), existingInspirations: brief.inspirations, room: { width: room.width, depth: room.depth, focuses: room.focuses, fixtures: room.fixtures } }) }];
+  const messages: MessageParam[] = [{ role: "user", content: JSON.stringify({ idea: brief.direction, purpose: brief.purpose, location: brief.location || "unspecified", existingTags: brief.tags.filter(x => x.startsWith("urn:tag:")), existingInspirations: brief.inspirations, room: { width: room.width, depth: room.depth, focuses: room.focuses, fixtures: room.fixtures.map(fixture => ({ ...fixture, footprint: fixtureSize(fixture, shelves) })) } }) }];
   const allowed = new Map<string, TasteEntity>();
   for (const tag of brief.tags.filter(x => x.startsWith("urn:tag:"))) allowed.set(tag, { id: tag, name: tag.split(":").at(-1)!.replaceAll("_", " "), type: "tag" });
   let research: TasteResearch | null = null;
