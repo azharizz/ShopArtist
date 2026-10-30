@@ -23,7 +23,7 @@ export function AgentChat({
     { role: "user" | "agent"; text: string }[]
   >([]);
   const [prompt, setPrompt] = useState("");
-  const [remote, setRemote] = useState(false);
+  const [useAI, setUseAI] = useState(false);
   const [pending, setPending] = useState(false);
   const [proposal, setProposal] = useState<{
     result: Proposal;
@@ -44,7 +44,7 @@ export function AgentChat({
       const result = await api<Proposal>("/agent", {
         message: text,
         room,
-        remote,
+        mode: useAI ? "ai" : "local",
       });
       setMessages((current) => [
         ...current,
@@ -78,7 +78,7 @@ export function AgentChat({
         </p>
       </div>
       <span className="agent-mode">
-        {remote ? "AI · OpenAI" : "LOCAL · command agent, not an LLM"}
+        {useAI ? "AI AGENT · natural language" : "LOCAL · command agent, not an LLM"}
       </span>
       <div
         className="chat-messages"
@@ -201,15 +201,15 @@ export function AgentChat({
         <label>
           <input
             type="checkbox"
-            checked={remote}
+            checked={useAI}
             disabled={pending}
-            onChange={(e) => setRemote(e.target.checked)}
+            onChange={(e) => setUseAI(e.target.checked)}
           />
-          Use OpenAI for this request
+          Use AI Agent for this request
         </label>
         <p>
-          This sends your message and room layout to OpenAI. Requires a
-          server-side API key. No location, catalog or customer data is sent.
+          This sends your message and room layout to the configured AI provider.
+          Requires the server’s AI Agent key. No location, catalog or customer data is sent.
           Never approves automatically.
         </p>
       </details>

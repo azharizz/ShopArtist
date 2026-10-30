@@ -74,7 +74,7 @@ Proposals never change the current approved layout. Catalog, mapping, or shelf c
 
 ## Optional AI assistant
 
-Create a local `.env` in this folder with `OPENAI_API_KEY` and optionally `OPENAI_MODEL` (default `gpt-4.1-mini`), then restart the server. Keep this file private; it is gitignored. Enable **Use OpenAI** under **Commands & AI mode** only when you want to send the prompt and current room configuration to OpenAI. The server calls Chat Completions; credentials never enter browser responses. Local commands remain available without credentials.
+Enable **Use AI Agent** under **Commands & AI mode** to send your prompt and current room layout to the same configured AI provider used for design research. The server uses the Claude Messages SDK through its provider adapter; the model is not necessarily Claude. Proposals still require your review and are not saved automatically. Local commands remain available without credentials.
 
 Model responses are parsed into a bounded command schema and checked against the same physical constraints as manual edits. Neither mode automatically saves or approves changes. Assets are original procedural fixture types, **not arbitrary AI-generated 3D meshes**. No external model calls were used in local verification.
 
@@ -130,8 +130,8 @@ Each browser receives an opaque HttpOnly, SameSite=Strict sandbox cookie. SQLite
 | `NEBIUS_API_KEY` | Unset                             | Server-only key for AI Agent inference                       |
 | `NEBIUS_BASE_URL` | Provider API endpoint            | OpenAI-compatible model API endpoint                         |
 | `NEBIUS_MODEL` | Provider model | Tool-capable model used by the AI Agent |
-| `OPENAI_API_KEY` | Unset                             | Optional server-only model access; local commands otherwise |
-| `OPENAI_MODEL`   | `gpt-4.1-mini`                    | Model used only when explicitly enabled in chat             |
+| `OPENAI_API_KEY` | Unset                             | Optional legacy server-only chat provider |
+| `OPENAI_MODEL`   | `gpt-4.1-mini`                    | Model for legacy OpenAI chat requests |
 
 Deploy with `npm ci && npm run build`, then `HOST=0.0.0.0 npm start`. Use one Node process with a persistent disk and an HTTPS reverse proxy. This is a **restricted demo sandbox**, not production identity authentication or a multi-tenant business account system. Do not upload sensitive inventory to a public demo or expose a configured paid AI key through this anonymous service. Shelf generation is limited to eight requests, Qloo research/search to twenty requests, and agent previews to twelve requests per minute per sandbox; production also needs authenticated owners, infrastructure abuse controls, billing limits and backup/retention. No hosting or public repository was created.
 

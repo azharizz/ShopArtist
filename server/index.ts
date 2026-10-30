@@ -490,8 +490,8 @@ app.post("/api/brief", (req, res) => {
 });
 app.get("/api/agent", (_req, res) =>
   res.json({
-    available: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+    available: Boolean(process.env.NEBIUS_API_KEY),
+    model: process.env.NEBIUS_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507",
   }),
 );
 const agentTimes = new Map<string, number[]>();
@@ -501,7 +501,8 @@ app.post("/api/agent", async (req, res) => {
     .object({
       message: z.string().trim().min(1).max(2000),
       room: roomSchema,
-      remote: z.boolean().default(false),
+      remote: z.boolean().optional(),
+      mode: z.enum(["local", "ai", "openai"]).optional(),
     })
     .parse(req.body);
   const times = (agentTimes.get(id) ?? []).filter(
@@ -518,7 +519,7 @@ app.post("/api/agent", async (req, res) => {
     input.message,
     input.room,
     state.shelves,
-    input.remote,
+    input.mode ?? (input.remote ? "openai" : "local"),
   );
   res.json({ ...result, changes: roomChanges(input.room, result.room) });
 });

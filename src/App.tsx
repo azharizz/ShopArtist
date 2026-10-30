@@ -1858,7 +1858,7 @@ export default function App({
               This is a cookie-isolated demo sandbox, not production owner
               authentication. Cultural data is fictional. The local command
               agent needs no key. Optional AI mode sends your prompt and room to
-              OpenAI only when you explicitly select it. Approvals always stay
+              the configured AI provider only when you explicitly select it. Approvals always stay
               with you.
             </p>
             <button
