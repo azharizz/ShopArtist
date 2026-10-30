@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { fixtureSize, fixturesOverlap, validateRoom, type Fixture } from "../shared/room.js";
 import type { DesignDirection, DesignStudy } from "../shared/research.js";
 import type { AssetDefinition } from "../shared/assets/types.js";
+import { assessCirculation } from "../shared/room-circulation.js";
 import type { Shelf } from "../shared/types.js";
 import { createAssetWithAgent } from "./asset-creator.js";
 
@@ -24,12 +25,15 @@ export async function buildDirectionAsset(study: DesignStudy, direction: DesignD
   for (let x = -room.width / 2 + size.width / 2; x <= room.width / 2 - size.width / 2 + 1e-6; x += 0.5)
     for (let z = -room.depth / 2 + size.depth / 2; z <= room.depth / 2 - size.depth / 2 + 1e-6; z += 0.5)
       candidates.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100 });
-  candidates.sort((a, b) => a.x ** 2 + a.z ** 2 - b.x ** 2 - b.z ** 2);
+  const target = { x: idea.x ?? 0, z: idea.z ?? 0 };
+  candidates.sort((a, b) => (a.x - target.x) ** 2 + (a.z - target.z) ** 2 - (b.x - target.x) ** 2 - (b.z - target.z) ** 2);
+  const baseline = assessCirculation(room, shelves);
   const position = candidates.find(({ x, z }) => {
     const fixture = { ...base, x, z };
-    return !room.fixtures.some(other => fixturesOverlap(other, fixture, shelves)) && !validateRoom({ ...room, fixtures: [...room.fixtures, fixture] }, shelves).length;
+    const next = { ...room, fixtures: [...room.fixtures, fixture] };
+    return !room.fixtures.some(other => fixturesOverlap(other, fixture, shelves)) && !validateRoom(next, shelves).length && (baseline.entranceBlocked || !assessCirculation(next, shelves).entranceBlocked);
   });
   if (!position) throw new Error("The generated fixture did not fit in the shop without overlapping another fixture. Try a different direction.");
   room.fixtures.push({ ...base, ...position });
-  return { asset, direction: { ...direction, room, changes: [...direction.changes, `${asset.label}: ${idea.reason}`] } };
+  return { asset, direction: { ...direction, room, circulation: assessCirculation(room, shelves), changes: [...direction.changes, `${asset.label}: ${idea.reason}${idea.x !== undefined && idea.z !== undefined ? ` (placed at ${position.x}, ${position.z} m; requested ${idea.x}, ${idea.z} m)` : ""}`] } };
 }

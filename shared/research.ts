@@ -41,7 +41,7 @@ export interface DesignDirection {
   circulation?: { entranceBlocked: boolean; reachableFreeAreaPercent: number; clearanceMeters: number; gridMeters: number; note: string };
   visualReview?: { acceptable: boolean; critique: string; uncertain?: boolean };
   decisions?: { choice: string; interpretation: string; evidence: TasteEntity[] }[];
-  assetIdea?: { brief: string; reason: string; referenceId?: string };
+  assetIdea?: { brief: string; reason: string; referenceId?: string; x?: number; z?: number };
 }
 export interface DesignStudy {
   id: string;

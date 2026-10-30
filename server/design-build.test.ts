@@ -7,7 +7,7 @@ import type { DesignStudy, DesignDirection } from "../shared/research.js";
 import { seed } from "./seed.js";
 
 const asset: AssetDefinition = { id: "generated-00000000-0000-4000-8000-000000000001", label: "Featured books display", description: "A small book display", function: "Display featured books", moodTags: ["cozy"], width: 0.8, depth: 0.8, heightApprox: 1, coloring: "Room accent", visualReference: "/asset-catalog.html#custom", implementation: "shared/generated-assets.ts", geometry: [{ shape: "box", width: .8, depth: .8, height: 1, x: 0, y: .5, z: 0, color: "accent" }] };
-const direction: DesignDirection = { id: "direction", name: "Cozy reading", description: "A warm space", evidence: [{ id: "tag", name: "Charming", type: "tag" }], room: createRoom(["books", "coffee"], "modern"), changes: [], assetIdea: { brief: "A small display for featured books", reason: "Gives readers a place to discover books", referenceId: "bench" } };
+const direction: DesignDirection = { id: "direction", name: "Cozy reading", description: "A warm space", evidence: [{ id: "tag", name: "Charming", type: "tag" }], room: createRoom(["books", "coffee"], "modern"), changes: [], assetIdea: { brief: "A small display for featured books", reason: "Gives readers a place to discover books", referenceId: "bench", x: 2, z: 2 } };
 const study = { brief: { direction: "Romantic bookshop and cafe", purpose: "Books and coffee" } } as DesignStudy;
 const shelves = seed().shelves;
 
@@ -21,6 +21,8 @@ test("building a direction creates a referenced fixture, places it and leaves th
   assert.equal(result.asset?.id, asset.id);
   const fixture = result.direction.room.fixtures.find(item => item.kind === asset.id)!;
   assert.ok(fixture); assert.deepEqual(fixture.asset, asset);
+  assert.match(result.direction.changes.at(-1)!, /requested 2, 2 m/);
+  assert.ok(result.direction.circulation);
   assert.ok(result.direction.room.fixtures.filter(item => item.id !== fixture.id).every(item => !fixturesOverlap(item, fixture, shelves)));
   assert.deepEqual(validateRoom(result.direction.room, shelves), []);
   assert.deepEqual(direction, before);
