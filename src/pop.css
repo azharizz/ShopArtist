@@ -247,6 +247,7 @@ summary:focus-visible {
 }
 .button.primary {
   background: var(--pop-yellow);
+  color: var(--ink);
 }
 .button.dark {
   background: var(--ink);
@@ -919,6 +920,7 @@ summary:focus-visible {
   animation: pop-in 0.2s both;
 }
 .tools-menu button {
+  color: var(--ink);
   font-weight: 800;
   border-bottom: 2px solid rgba(20, 18, 26, 0.12);
 }
@@ -955,8 +957,6 @@ summary:focus-visible {
   animation: pop-blink 1.2s steps(1) infinite;
 }
 .generate-button {
-  background: var(--pop-red);
-  color: #fff;
   font-size: 15px;
   animation: pop-throb 3s ease-in-out infinite;
 }
