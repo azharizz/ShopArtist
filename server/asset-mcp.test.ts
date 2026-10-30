@@ -9,7 +9,7 @@ import { curatedAssets } from "../shared/assets/index.js";
 import { inspectGeneratedGeometry } from "../shared/generated-assets.js";
 
 test("curated assets remain valid and old shared copies do not duplicate them", { timeout: 30000 }, async () => {
-  assert.equal(curatedAssets.length, 22);
+  assert.equal(curatedAssets.length, 64);
   assert.equal(new Set(curatedAssets.map(asset => asset.id)).size, curatedAssets.length);
   for (const asset of curatedAssets) {
     const dimensions = inspectGeneratedGeometry(asset.geometry);

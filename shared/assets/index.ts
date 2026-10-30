@@ -44,6 +44,49 @@ import curated19 from "./decorative-floor-lamp.js";
 import curated20 from "./parisian-romantic-library.js";
 import curated21 from "./blush-reading-nook-bookcase.js";
 
+import curated22 from "./espresso-bar.js";
+import curated23 from "./pastry-display-case.js";
+import curated24 from "./condiment-station.js";
+import curated25 from "./wall-menu-panel.js";
+import curated26 from "./standing-menu-board.js";
+import curated27 from "./cafe-banquette-seating.js";
+import curated28 from "./cafe-booth.js";
+import curated29 from "./barrel-cafe-table.js";
+import curated30 from "./outdoor-look-cafe-bench.js";
+import curated31 from "./reading-and-coffee-nook.js";
+import curated32 from "./boutique-clothing-rail.js";
+import curated33 from "./circular-clothing-rack.js";
+import curated34 from "./folded-clothing-table.js";
+import curated35 from "./shoe-display-wall.js";
+import curated36 from "./hat-display-stand.js";
+import curated37 from "./full-length-mirror.js";
+import curated38 from "./fitting-room-divider.js";
+import curated39 from "./fitting-room-bench.js";
+import curated40 from "./mannequin-pedestal.js";
+import curated41 from "./central-styling-station.js";
+import curated42 from "./gallery-display-wall.js";
+import curated43 from "./painting-display-rack.js";
+import curated44 from "./artist-worktable.js";
+import curated45 from "./canvas-storage-rack.js";
+import curated46 from "./color-sample-wall.js";
+import curated47 from "./art-supply-island.js";
+import curated48 from "./art-workshop-station.js";
+import curated49 from "./exhibition-entrance-arch.js";
+import curated50 from "./featured-artist-display.js";
+import curated51 from "./classic-library-bookcase.js";
+import curated52 from "./modern-floating-look-shelf.js";
+import curated53 from "./bookstore-display-island.js";
+import curated54 from "./childrens-story-corner.js";
+import curated55 from "./mystery-bookcase.js";
+import curated56 from "./fantasy-display-tower.js";
+import curated57 from "./book-recommendation-stand.js";
+import curated58 from "./reading-armchair.js";
+import curated59 from "./book-checkout-counter.js";
+import curated60 from "./gift-wrapping-counter.js";
+import curated61 from "./reading-lamp-and-side-table.js";
+import curated62 from "./book-cart.js";
+import curated63 from "./book-and-plant-divider.js";
+
 export const curatedAssets: AssetDefinition[] = [
   curated0,
   curated1,
@@ -67,4 +110,46 @@ export const curatedAssets: AssetDefinition[] = [
   curated19,
   curated20,
   curated21,
+  curated22,
+  curated23,
+  curated24,
+  curated25,
+  curated26,
+  curated27,
+  curated28,
+  curated29,
+  curated30,
+  curated31,
+  curated32,
+  curated33,
+  curated34,
+  curated35,
+  curated36,
+  curated37,
+  curated38,
+  curated39,
+  curated40,
+  curated41,
+  curated42,
+  curated43,
+  curated44,
+  curated45,
+  curated46,
+  curated47,
+  curated48,
+  curated49,
+  curated50,
+  curated51,
+  curated52,
+  curated53,
+  curated54,
+  curated55,
+  curated56,
+  curated57,
+  curated58,
+  curated59,
+  curated60,
+  curated61,
+  curated62,
+  curated63,
 ];
