@@ -170,7 +170,7 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
             try {
               built.visualReview = await review(built.room, shelves, brief.direction || brief.purpose);
               if (!built.visualReview.acceptable && !("uncertain" in built.visualReview && built.visualReview.uncertain) && attempts < 3) { issues.push(`${direction.name}: visual review found ${built.visualReview.critique}. Revise the layout and resubmit the same direction name.`); continue; }
-            } catch { built.visualReview = { acceptable: false, critique: "Visual review was unavailable; inspect the room manually." }; }
+            } catch { built.visualReview = { acceptable: false, available: false, critique: "Visual review was unavailable; inspect the room manually." }; }
             pendingDirections.push(built);
           }
           if (process.env.AI_DEBUG === "1") console.info("AI Agent direction validation", { accepted: pendingDirections.length, rejected: issues });
