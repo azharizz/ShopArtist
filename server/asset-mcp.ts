@@ -6,16 +6,16 @@ import { z } from "zod";
 import { fixtureCatalog } from "../shared/room.js";
 import { inspectGeneratedGeometry } from "../shared/generated-assets.js";
 import { renderAssetViews } from "./asset-preview.js";
-import { assetInputSchema, saveSharedAsset, sharedAssets } from "./shared-assets.js";
+import { assetInputSchema, saveSharedAsset, allSharedAssets } from "./shared-assets.js";
 
 const server = new McpServer({ name: "shopartist-assets", version: "1.0.0" });
 const previewed = new Set<string>();
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 server.registerTool("list_assets", { description: "List the built-in and locally shared MCP asset catalog; browser-private assets are not exposed.", inputSchema: {} }, async () => ({
-  content: [{ type: "text", text: JSON.stringify([...Object.values(fixtureCatalog), ...sharedAssets()].map(({ id, label, description, function: purpose, moodTags, width, depth, heightApprox }) => ({ id, label, description, function: purpose, moodTags, width, depth, heightApprox }))) }],
+  content: [{ type: "text", text: JSON.stringify([...Object.values(fixtureCatalog), ...allSharedAssets()].map(({ id, label, description, function: purpose, moodTags, width, depth, heightApprox }) => ({ id, label, description, function: purpose, moodTags, width, depth, heightApprox }))) }],
 }));
 server.registerTool("inspect_asset", { description: "Inspect one built-in or shared asset, including its geometry or built-in source code.", inputSchema: { id: z.string().min(1).max(80) } }, async ({ id }) => {
-  const asset = [...Object.values(fixtureCatalog), ...sharedAssets()].find(item => item.id === id);
+  const asset = [...Object.values(fixtureCatalog), ...allSharedAssets()].find(item => item.id === id);
   if (!asset) return { isError: true, content: [{ type: "text", text: "Asset not found." }] };
   const source = Object.hasOwn(fixtureCatalog, id) ? readFileSync(new URL(`../src/assets/${id}.ts`, import.meta.url), "utf8") : undefined;
   return { content: [{ type: "text", text: JSON.stringify({ asset, ...(source ? { source } : {}) }) }] };

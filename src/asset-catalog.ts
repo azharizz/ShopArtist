@@ -106,7 +106,7 @@ for (const asset of catalog) {
     ["Dimensions", `${asset.width} m wide × ${asset.depth} m deep; approx. ${asset.heightApprox} m high.${asset.dimensionNote ? ` ${asset.dimensionNote}` : ""}`],
     ["Function", asset.function], ["Style & mood", asset.moodTags.join(" · ")],
     ["Coloring", asset.coloring], ["Rendering code", asset.implementation],
-    ["Catalog entry", asset.source === "mcp" ? "Shared MCP asset" : asset.geometry ? "Saved in your asset catalog" : `shared/assets/${asset.id}.ts`],
+    ["Catalog entry", asset.catalogPath ?? (asset.source === "mcp" ? "Shared MCP asset" : asset.geometry ? "Saved in your asset catalog" : `shared/assets/${asset.id}.ts`)],
     ...(asset.visualReviews?.length ? [["Visual review", `${asset.visualReviews.length} of 3 reviews · ${asset.visualReviews.at(-1)!.acceptable ? "Reviewer accepted" : "Saved with concerns"}. ${asset.visualReviews.at(-1)!.critique}`] as [string, string]] : []),
     ...(asset.referenceId ? [["Reference", catalog.find(item => item.id === asset.referenceId)?.label ?? asset.referenceId] as [string, string]] : []),
   ];

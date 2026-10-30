@@ -1,10 +1,35 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { curatedAssets } from "../shared/assets/index.js";
+import { inspectGeneratedGeometry } from "../shared/generated-assets.js";
+
+test("curated assets remain valid and old shared copies do not duplicate them", { timeout: 30000 }, async () => {
+  assert.equal(curatedAssets.length, 22);
+  assert.equal(new Set(curatedAssets.map(asset => asset.id)).size, curatedAssets.length);
+  for (const asset of curatedAssets) {
+    const dimensions = inspectGeneratedGeometry(asset.geometry);
+    assert.deepEqual([asset.width, asset.depth, asset.heightApprox], [dimensions.width, dimensions.depth, dimensions.heightApprox]);
+    assert.ok(asset.catalogPath?.startsWith("shared/assets/"));
+  }
+  const directory = await mkdtemp(path.join(tmpdir(), "shopartist-curated-"));
+  const client = new Client({ name: "test", version: "1.0.0" });
+  try {
+    await mkdir(path.join(directory, "mcp-assets"));
+    const asset = curatedAssets[0];
+    await writeFile(path.join(directory, "mcp-assets", `${asset.id}.json`), JSON.stringify(asset));
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: ["--import", "tsx", "server/asset-mcp.ts"], cwd: process.cwd(), env: { ...process.env, DATA_DIR: directory } as Record<string, string> }));
+    const result = await client.callTool({ name: "list_assets", arguments: {} });
+    const block = (result.content as Array<{ type: string; text?: string }>).find(item => item.type === "text");
+    const entries = JSON.parse(block!.text!) as { id: string }[];
+    assert.equal(entries.filter(entry => entry.id === asset.id).length, 1);
+    assert.ok(curatedAssets.every(item => entries.some(entry => entry.id === item.id)));
+  } finally { await client.close(); await rm(directory, { recursive: true, force: true }); }
+});
 
 test("MCP requires a preview before saving and persists the asset in the shared catalog", { timeout: 30000 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "shopartist-mcp-"));

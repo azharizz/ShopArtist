@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { generatedGeometrySchema, inspectGeneratedGeometry } from "../shared/generated-assets.js";
 import type { AssetDefinition } from "../shared/assets/types.js";
+import { curatedAssets } from "../shared/assets/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const directory = () => path.join(process.env.DATA_DIR || path.join(root, "data"), "mcp-assets");
@@ -41,4 +42,9 @@ export function sharedAssets(): AssetDefinition[] {
       return [{ ...stored, ...draft, width: dimensions.width, depth: dimensions.depth, heightApprox: dimensions.heightApprox, source: "mcp" } as AssetDefinition];
     } catch (error) { console.error(`Could not load shared asset ${file}:`, error instanceof Error ? error.message : error); return []; }
   });
+}
+
+export function allSharedAssets(): AssetDefinition[] {
+  const curatedIds = new Set(curatedAssets.map(asset => asset.id));
+  return [...curatedAssets, ...sharedAssets().filter(asset => !curatedIds.has(asset.id))];
 }

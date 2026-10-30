@@ -16,7 +16,8 @@ export interface AssetDefinition {
   visualReference: string;
   implementation: string;
   geometry?: GeneratedPart[];
-  source?: "mcp";
+  source?: "mcp" | "catalog";
+  catalogPath?: string;
   referenceId?: string;
   visualReviews?: { acceptable: boolean; critique: string; improvements: string }[];
 }

@@ -12,7 +12,7 @@ import { fixtureEvidence } from "./culture.js";
 import { proposeDesign } from "./agent.js";
 import { runDesignAgent } from "./design-agent.js";
 import { createAssetWithAgent } from "./asset-creator.js";
-import { sharedAssets } from "./shared-assets.js";
+import { allSharedAssets } from "./shared-assets.js";
 import { renderAssetViews } from "./asset-preview.js";
 import { buildDirectionAsset } from "./design-build.js";
 import type { AssetDefinition } from "../shared/assets/types.js";
@@ -48,7 +48,7 @@ db.exec(
 db.exec("CREATE TABLE IF NOT EXISTS custom_assets (owner TEXT NOT NULL, id TEXT NOT NULL, asset TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(owner,id))");
 function assetsFor(owner: string): AssetDefinition[] {
   const rows = db.prepare("SELECT asset FROM custom_assets WHERE owner = ? ORDER BY created_at, id").all(owner) as { asset: string }[];
-  return [...Object.values(fixtureCatalog), ...sharedAssets(), ...rows.map(row => JSON.parse(row.asset) as AssetDefinition)];
+  return [...Object.values(fixtureCatalog), ...allSharedAssets(), ...rows.map(row => JSON.parse(row.asset) as AssetDefinition)];
 }
 // One-time migration: existing approved plans gain a versioned interior without losing inventory.
 for (const row of db.prepare("SELECT id, state FROM sandboxes").all() as {
@@ -343,7 +343,7 @@ app.post("/api/projects/create", async (req, res) => {
     if (!direction || direction.room.focuses.join() !== input.focuses.join() || validateRoom(direction.room, state.shelves).length)
       throw new Error("The selected design is no longer valid. Research the current concept again.");
     const catalog = assetsFor(session.id);
-    if (input.generateAsset && direction.assetIdea && catalog.filter(asset => asset.geometry && asset.source !== "mcp").length >= 50) throw new Error("Your catalog is full. This direction needs space for a new generated fixture.");
+    if (input.generateAsset && direction.assetIdea && catalog.filter(asset => asset.geometry && !asset.source).length >= 50) throw new Error("Your catalog is full. This direction needs space for a new generated fixture.");
     const built = await buildDirectionAsset(study, direction, state.shelves, catalog, undefined, input.generateAsset, event => send("progress", event));
     generatedAsset = built.asset;
     state.brief = study.brief;
@@ -357,7 +357,7 @@ app.post("/api/projects/create", async (req, res) => {
   try {
     db.prepare("INSERT INTO projects VALUES (?, ?, ?, ?) ON CONFLICT(owner,id) DO UPDATE SET state=excluded.state, updated_at=excluded.updated_at").run(session.id, session.state.projectId!, JSON.stringify(session.state), new Date().toISOString());
     if (generatedAsset) {
-      if (assetsFor(session.id).filter(asset => asset.geometry && asset.source !== "mcp").length >= 50) throw new Error("Your catalog is full. This direction needs space for a new generated fixture.");
+      if (assetsFor(session.id).filter(asset => asset.geometry && !asset.source).length >= 50) throw new Error("Your catalog is full. This direction needs space for a new generated fixture.");
       db.prepare("INSERT INTO custom_assets (owner, id, asset, created_at) VALUES (?, ?, ?, ?)").run(session.id, generatedAsset.id, JSON.stringify(generatedAsset), new Date().toISOString());
     }
   session.state = state;
@@ -416,7 +416,7 @@ app.post("/api/assets/generate", limitQloo, async (req, res) => {
   const catalog = assetsFor(owner);
   const reference = input.referenceId ? catalog.find(asset => asset.id === input.referenceId) : undefined;
   if (input.referenceId && !reference) { res.status(422).json({ error: "The selected reference is not available in your catalog." }); return; }
-  if (catalog.filter(asset => asset.geometry && asset.source !== "mcp").length >= 50) { res.status(422).json({ error: "The catalog supports up to 50 generated assets." }); return; }
+  if (catalog.filter(asset => asset.geometry && !asset.source).length >= 50) { res.status(422).json({ error: "The catalog supports up to 50 generated assets." }); return; }
   const result = await createAssetWithAgent(input.request, reference, asset => {
     db.prepare("INSERT INTO custom_assets (owner, id, asset, created_at) VALUES (?, ?, ?, ?)").run(owner, asset.id, JSON.stringify(asset), new Date().toISOString());
   });
