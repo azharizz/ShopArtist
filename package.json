@@ -1,0 +1,42 @@
+{
+  "name": "shopartist",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "mcp:assets": "tsx server/asset-mcp.ts",
+    "dev": "concurrently -k \"tsx watch server/index.ts\" \"vite --host 127.0.0.1\"",
+    "build": "tsc --noEmit && vite build",
+    "start": "tsx server/index.ts",
+    "test": "tsx --test server/planner.test.ts server/workflow.test.ts server/qloo.test.ts server/design-agent.test.ts server/asset-creator.test.ts server/generated-workflow.test.ts server/design-build.test.ts server/ai-bridge.test.ts server/asset-preview.test.ts server/asset-review.test.ts server/asset-mcp.test.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@vitejs/plugin-react": "^4.7.0",
+    "csv-parse": "^6.1.0",
+    "express": "^5.1.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sharp": "^0.35.5",
+    "three": "^0.180.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.180.0",
+    "concurrently": "^9.2.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.3.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

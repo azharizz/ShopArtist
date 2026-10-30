@@ -1,0 +1,32 @@
+:root { font-family: system-ui, sans-serif; color: #26372e; background: #f7f6f0; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 1120px; margin: auto; padding: 44px 24px 80px; }
+header { max-width: 730px; margin-bottom: 36px; }
+a { color: #426750; }
+.eyebrow { margin-top: 44px; font-size: .75rem; letter-spacing: .14em; font-weight: 700; }
+h1, h2 { font-family: Georgia, serif; font-weight: 500; }
+h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); margin: .2em 0; }
+header p { line-height: 1.6; }
+.note { color: #607064; font-size: .9rem; }
+.assets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 20px; }
+.asset { background: white; border: 1px solid #dcdfd5; border-radius: 14px; overflow: hidden; scroll-margin-top: 20px; }
+.preview { aspect-ratio: 3 / 2; display: grid; place-items: center; background: #edece4; color: #607064; }
+.preview img { width: 100%; height: 100%; object-fit: cover; }
+.content { padding: 20px; }
+h2 { font-size: 1.55rem; margin: 0 0 5px; }
+code { font-size: .78rem; color: #59725f; }
+.content p, dd { font-size: .9rem; line-height: 1.5; }
+dl { margin: 22px 0 0; }
+dt { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #6f8073; margin-top: 14px; }
+dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.create-asset { margin: 0 0 36px; padding: 24px; background: #e9eee4; border: 1px solid #cbd7c9; border-radius: 12px; max-width: 730px; }
+.create-asset h2 { margin-top: 0; }
+.create-asset p { line-height: 1.5; }
+.create-asset form { display: grid; gap: 8px; }
+.create-asset label { font-size: .9rem; font-weight: 650; margin-top: 8px; }
+.create-asset textarea, .create-asset select { width: 100%; border: 1px solid #9cad9e; border-radius: 6px; background: #fff; color: #26372e; padding: 10px; font: inherit; }
+.create-asset button { justify-self: start; margin-top: 10px; background: #294d38; color: #fff; border: 0; border-radius: 6px; padding: 12px 18px; font: inherit; font-weight: 650; cursor: pointer; }
+.create-asset button:disabled { opacity: .65; cursor: wait; }
+.create-asset :focus-visible { outline: 3px solid #668e6b; outline-offset: 3px; }
+#asset-status { margin: 0; font-weight: 600; }
