@@ -1,0 +1,164 @@
+import type { AssetDefinition } from "./types.js";
+
+export default {
+  "label": "Staggered Cubby Bookcase",
+  "description": "Mixed-size compartments with offset dividers.",
+  "function": "Use as a staggered cubby bookcase in a book shop layout.",
+  "moodTags": [
+    "book",
+    "staggered",
+    "cubby",
+    "bookcase"
+  ],
+  "geometry": [
+    {
+      "shape": "box",
+      "width": 1.45,
+      "height": 0.08,
+      "depth": 0.4,
+      "x": 0,
+      "y": 0.04,
+      "z": 0,
+      "color": "frame"
+    },
+    {
+      "shape": "box",
+      "width": 1.33,
+      "height": 1.74,
+      "depth": 0.035,
+      "x": 0,
+      "y": 0.95,
+      "z": -0.17500000000000002,
+      "color": "#efe2cd"
+    },
+    {
+      "shape": "box",
+      "width": 0.08,
+      "height": 1.8199999999999998,
+      "depth": 0.4,
+      "x": -0.6849999999999999,
+      "y": 0.99,
+      "z": 0,
+      "color": "wood"
+    },
+    {
+      "shape": "box",
+      "width": 0.08,
+      "height": 1.8199999999999998,
+      "depth": 0.4,
+      "x": 0.6849999999999999,
+      "y": 0.99,
+      "z": 0,
+      "color": "wood"
+    },
+    {
+      "shape": "box",
+      "width": 1.29,
+      "height": 0.05,
+      "depth": 0.35000000000000003,
+      "x": 0,
+      "y": 0.36,
+      "z": 0,
+      "color": "wood"
+    },
+    {
+      "shape": "box",
+      "width": 1.29,
+      "height": 0.05,
+      "depth": 0.35000000000000003,
+      "x": 0,
+      "y": 0.7,
+      "z": 0,
+      "color": "wood"
+    },
+    {
+      "shape": "box",
+      "width": 1.29,
+      "height": 0.05,
+      "depth": 0.35000000000000003,
+      "x": 0,
+      "y": 1.04,
+      "z": 0,
+      "color": "wood"
+    },
+    {
+      "shape": "box",
+      "width": 1.29,
+      "height": 0.05,
+      "depth": 0.35000000000000003,
+      "x": 0,
+      "y": 1.38,
+      "z": 0,
+      "color": "wood"
+    },
+    {
+      "shape": "box",
+      "width": 1.29,
+      "height": 0.05,
+      "depth": 0.35000000000000003,
+      "x": 0,
+      "y": 1.72,
+      "z": 0,
+      "color": "wood"
+    },
+    {
+      "shape": "box",
+      "width": 1.45,
+      "height": 0.08,
+      "depth": 0.4,
+      "x": 0,
+      "y": 1.8599999999999999,
+      "z": 0,
+      "color": "frame"
+    },
+    {
+      "shape": "box",
+      "width": 0.06,
+      "height": 0.28,
+      "depth": 0.34,
+      "x": -0.42,
+      "y": 0.53,
+      "z": 0,
+      "color": "frame"
+    },
+    {
+      "shape": "box",
+      "width": 0.06,
+      "height": 0.28,
+      "depth": 0.34,
+      "x": 0.3,
+      "y": 0.87,
+      "z": 0,
+      "color": "frame"
+    },
+    {
+      "shape": "box",
+      "width": 0.06,
+      "height": 0.28,
+      "depth": 0.34,
+      "x": -0.1,
+      "y": 1.21,
+      "z": 0,
+      "color": "frame"
+    },
+    {
+      "shape": "box",
+      "width": 0.06,
+      "height": 0.28,
+      "depth": 0.34,
+      "x": 0.45,
+      "y": 1.55,
+      "z": 0,
+      "color": "frame"
+    }
+  ],
+  "id": "generated-945cfd52-dcfd-4baa-92bc-a1d92f15249a",
+  "width": 1.45,
+  "depth": 0.4,
+  "heightApprox": 1.9,
+  "coloring": "Room-linked colors: frame, wood. Other colors are fixed.",
+  "visualReference": "/asset-catalog.html#generated-945cfd52-dcfd-4baa-92bc-a1d92f15249a",
+  "implementation": "shared/generated-assets.ts",
+  "source": "catalog",
+  "catalogPath": "shared/assets/staggered-cubby-bookcase.ts"
+} satisfies AssetDefinition;
