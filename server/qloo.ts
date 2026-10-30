@@ -78,7 +78,7 @@ export function designFromTaste(brief: DesignBrief, room: RoomDesign, tags: Tast
   return { room: next, influences, explanation: `ShopArtist uses matching words from your brief and Qloo tags to suggest a ${style} starting palette and ${arrangement} arrangement. Unmatched ideas keep the starting style. Your existing furniture is retained; edit the preview freely before saving.` };
 }
 
-export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves: import("../shared/types.js").Shelf[]): Promise<TasteResearch> {
+export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves: import("../shared/types.js").Shelf[], options: { placeTags?: string[]; includeProposal?: boolean } = {}): Promise<TasteResearch> {
   const anchors = brief.inspirations.flatMap(value => {
     const [id, ...parts] = value.split("|");
     return idPattern.test(id) ? [{ id, name: parts.join("|") || id, type: "" }] : [];
@@ -95,11 +95,12 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
   const heatmap = (anchors.length || tagSignals.length) && (location || brief.latitude !== null)
     ? qloo("/v2/insights", { "filter.type": "urn:heatmap", ...(anchors.length ? { "signal.interests.entities": anchors.map(a => a.id).join(",") } : {}), ...(tagSignals.length ? { "signal.interests.tags": tagSignals.join(",") } : {}), ...(brief.latitude !== null && brief.longitude !== null ? { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) } : { "filter.location.query": location, "filter.location.radius": String(brief.radius) }) })
     : Promise.resolve(null);
-  const [tagResult, ambienceResult, artistResult, brandResult, mapResult, placeResult] = await Promise.allSettled([
+  const [tagResult, ambienceResult, artistResult, brandResult, mapResult, placeResult, decorResult] = await Promise.allSettled([
     query("urn:tag"),
     qloo("/v2/insights", { ...signal, "filter.type": "urn:tag", "filter.tag.types": "urn:tag:ambience:qloo", take: "8" }),
     query("urn:entity:artist"), query("urn:entity:brand"), heatmap,
-    location || brief.latitude !== null ? qloo("/v2/insights", { ...signal, "filter.type": "urn:entity:place", ...(location ? { "filter.location.query": location } : { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) }), take: "8" }) : Promise.resolve({ results: { entities: [] } }),
+    location || brief.latitude !== null ? qloo("/v2/insights", { ...signal, "filter.type": "urn:entity:place", ...(options.placeTags?.length ? { "filter.tags": options.placeTags.join(",") } : {}), ...(location ? { "filter.location.query": location } : { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) }), take: "8" }) : Promise.resolve({ results: { entities: [] } }),
+    qloo("/v2/insights", { ...signal, "filter.type": "urn:tag", "filter.tag.types": "urn:tag:decor:qloo", take: "8" }),
   ]);
   const warnings: string[] = [];
   function unpack(result: PromiseSettledResult<any>, key: string, label: string): TasteEntity[] {
@@ -111,7 +112,8 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
   const generalTags = unpack(tagResult, "tags", "Taste tags");
   const ambience = ambienceResult.status === "fulfilled" && Array.isArray(ambienceResult.value?.results?.tags)
     ? ambienceResult.value.results.tags.map(entity).filter((item: TasteEntity | null): item is TasteEntity => !!item) : [];
-  const tags: TasteEntity[] = [...ambience, ...generalTags].filter((tag, i, all) => all.findIndex(t => t.id === tag.id) === i).slice(0, 12);
+  const decor = decorResult.status === "fulfilled" && Array.isArray(decorResult.value?.results?.tags) ? decorResult.value.results.tags.map(entity).filter((tag: TasteEntity | null): tag is TasteEntity => !!tag) : [];
+  const tags: TasteEntity[] = [...ambience, ...decor, ...generalTags].filter((tag, i, all) => all.findIndex(t => t.id === tag.id) === i).slice(0, 12);
   const artists = unpack(artistResult, "entities", "Artists");
   const brands = unpack(brandResult, "entities", "Brands");
   const places = unpack(placeResult, "entities", "Local reference places");
@@ -128,5 +130,5 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
       return Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(affinity) ? [{ latitude, longitude, affinity }] : [];
     });
   }
-  return { source: "qloo", location: location || (brief.latitude !== null ? "Selected coordinates" : "No location"), anchors: [...anchors, ...tagSignals.map(id => ({ id, name: id.split(":").at(-1)!.replaceAll("_", " "), type: "tag" }))], tags, artists, brands, places, points, warnings, proposal: designFromTaste(brief, room, tags, shelves) };
+  return { source: "qloo", location: location || (brief.latitude !== null ? "Selected coordinates" : "No location"), anchors: [...anchors, ...tagSignals.map(id => ({ id, name: id.split(":").at(-1)!.replaceAll("_", " "), type: "tag" }))], tags, artists, brands, places, points, warnings, ...(options.includeProposal === false ? {} : { proposal: designFromTaste(brief, room, tags, shelves) }) };
 }

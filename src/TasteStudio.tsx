@@ -40,12 +40,12 @@ export function GeographicTasteMap({ points, location, places = [] }: { points: 
 export function StudyResults({ study, selectedId, onSelect, compact = false, buildAssets = false }: { study: DesignStudy; selectedId?: string; onSelect?: (id: string) => void; compact?: boolean; buildAssets?: boolean }) {
   const research = study.research;
   return <div className={`study-results ${compact ? "compact" : ""}`}>
-    <div className="study-summary"><div><p className="study-kicker">QLOO RESEARCH · AI AGENT</p><h3>What fits your idea?</h3><p>Qloo connects {research.anchors.map(a => a.name).join(", ") || "your location"} with these cultural signals{research.location !== "No location" ? ` in ${research.location}` : ""}. The AI Agent groups the evidence into design directions.</p></div><div className="study-cues">{research.tags.slice(0, 8).map(tag => <span key={tag.id}>{tag.name}{typeof tag.affinity === "number" && <small> {Math.round(tag.affinity * 100)}%</small>}</span>)}</div><p className="small muted">Percentages are Qloo affinity scores, not star ratings or a probability of sales.</p></div>
+    <div className="study-summary"><div><p className="study-kicker">QLOO RESEARCH · AI AGENT</p><h3>What fits your idea?</h3><p>Qloo connects {research.anchors.map(a => a.name).join(", ") || "your location"} with these cultural signals{research.location !== "No location" ? ` in ${research.location}` : ""}. The AI Agent groups the evidence into design directions.</p></div><div className="study-cues">{research.tags.slice(0, 8).map(tag => <span key={tag.id}>{tag.name}</span>)}</div><p className="small muted">Percentages are Qloo affinity scores, not star ratings or a probability of sales.</p></div>
     {!compact && <div className="direction-section"><div className="direction-heading"><h3>Choose your direction</h3><p>Each concept uses the research differently. Pick one to generate your 3D starting point. Material and lighting ideas are descriptive; the preview uses the available colors, windows, and fixtures.{buildAssets && " If the agent identifies a catalog gap, building may also create and review a custom fixture."}</p></div>
       <div className="direction-grid">{study.directions.map((direction, i) => <button type="button" key={direction.id} className={`direction-card ${selectedId === direction.id ? "selected" : ""}`} aria-pressed={selectedId === direction.id} onClick={() => onSelect?.(direction.id)}>
         <span className="direction-number">0{i + 1} <span>{selectedId === direction.id ? "SELECTED" : "EXPLORE"}</span></span>
         <h4>{direction.name}</h4><p>{direction.description}</p>
-        <span className="direction-evidence">Qloo evidence: {direction.evidence.map(item => `${item.name}${typeof item.affinity === "number" ? ` ${Math.round(item.affinity * 100)}%` : ""}`).join(" · ")}</span>
+        <span className="direction-evidence">Qloo evidence: {direction.evidence.map(item => item.name).join(" · ")}</span>
         <span className="direction-colors" aria-label="Proposed colours">{[direction.room.wall, direction.room.floor, direction.room.accent].map((color, index) => <i key={index} style={{ background: color }} />)}</span>
         <span className="direction-changes">{direction.changes.length ? direction.changes.slice(0, 2).join(" · ") : "No fixture moves accepted; position them yourself in the editor."}</span>
         {buildAssets && direction.assetIdea && <span className="direction-asset"><strong>New fixture idea</strong><br />{direction.assetIdea.brief}<br /><small>{direction.assetIdea.reason}</small></span>}
@@ -61,7 +61,15 @@ export function TasteStudio({ brief, onBrief, room, forNewProject, study, onStud
   study: DesignStudy | null; onStudy: (study: DesignStudy | null) => void; selectedId: string; onSelect: (id: string) => void; onApply?: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const dirty = !!study && (brief.location !== study.brief.location || brief.direction !== study.brief.direction || brief.purpose !== study.brief.purpose);
+  const [inspirationQuery, setInspirationQuery] = useState("");
+  const [matches, setMatches] = useState<TasteEntity[]>([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  async function findInspirations() {
+    setSearchBusy(true); setError("");
+    try { const result = await api<{ results: TasteEntity[] }>(`/qloo/search?query=${encodeURIComponent(inspirationQuery)}`); setMatches(result.results); }
+    catch (e) { setError((e as Error).message); } finally { setSearchBusy(false); }
+  }
+  const dirty = !!study && (brief.location !== study.brief.location || brief.direction !== study.brief.direction || brief.purpose !== study.brief.purpose || brief.inspirations.some(item => !study.brief.inspirations.includes(item)));
   async function research() {
     setBusy(true); setError(""); onStudy(null); onSelect("");
     try { const result = await api<DesignStudy>("/ai/research", { brief, room, forNewProject }); onStudy(result); }
@@ -72,6 +80,12 @@ export function TasteStudio({ brief, onBrief, room, forNewProject, study, onStud
     <div className="taste-studio-fields">
       <label>Your shop idea<textarea rows={3} value={brief.direction ?? ""} maxLength={500} placeholder="A romantic bookshop and café with quiet corners and warm light…" onChange={e => onBrief({ ...brief, direction: e.target.value })} /></label>
       <label>Location <small>optional, for local taste and the map</small><input maxLength={160} value={brief.location} placeholder="New York City" onChange={e => onBrief({ ...brief, location: e.target.value, latitude: null, longitude: null })} /></label>
+    </div>
+    <div className="inspiration-search">
+      <label>Inspiration <small>optional: search for a place, book, artist, brand, or film</small><input value={inspirationQuery} maxLength={100} onChange={e => setInspirationQuery(e.target.value)} placeholder="e.g. Blue Bottle Coffee" /></label>
+      <button type="button" className="button subtle small" disabled={searchBusy || inspirationQuery.trim().length < 2} onClick={() => void findInspirations()}>{searchBusy ? "Searching…" : "Find inspiration"}</button>
+      {!!matches.length && <div className="taste-chips" aria-label="Inspiration search results">{matches.map(item => <button type="button" key={item.id} className="button subtle small" onClick={() => { if (brief.inspirations.length < 12 && !brief.inspirations.some(x => x.startsWith(`${item.id}|`))) onBrief({ ...brief, inspirations: [...brief.inspirations, `${item.id}|${item.name}`] }); setMatches([]); }}>{item.name}{item.detail ? ` — ${item.detail}` : ""}</button>)}</div>}
+      {!!brief.inspirations.length && <div className="selected-inspirations">{brief.inspirations.map(item => <button type="button" key={item} onClick={() => onBrief({ ...brief, inspirations: brief.inspirations.filter(value => value !== item) })} aria-label={`Remove ${item.split("|")[1] ?? item}`} >{item.split("|")[1] ?? item} <span>×</span></button>)}</div>}
     </div>
     <button type="button" className="button primary research-submit" disabled={busy || !(brief.direction || brief.purpose).trim()} onClick={() => void research()}><Sparkles size={17} />{busy ? "AI Agent is researching…" : "Research my idea"}</button>
     <p className="small muted">The AI Agent uses your idea and location to research Qloo and propose designs. Relevant taste tags and the location are sent to Qloo.{forNewProject && " When you build a direction, generated fixture previews are sent to the AI Agent for visual review."} This can take several minutes.</p>

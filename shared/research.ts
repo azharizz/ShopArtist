@@ -25,7 +25,7 @@ export interface TasteResearch {
   places?: TasteEntity[];
   points: TastePoint[];
   warnings: string[];
-  proposal: { room: RoomDesign; explanation: string; influences: string[] };
+  proposal?: { room: RoomDesign; explanation: string; influences: string[] };
 }
 
 export interface DesignDirection {
