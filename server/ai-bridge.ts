@@ -32,7 +32,7 @@ export function createAgentClient() {
         }
       }
       const body = {
-        model: input.model, messages, max_tokens: input.max_tokens, temperature: 0.35,
+        model: input.model, messages, max_tokens: input.max_tokens, temperature: typeof input.temperature === "number" ? input.temperature : 0.35,
         ...(input.tools?.length ? { tools: input.tools.map((tool: any) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.input_schema } })), tool_choice: input.tool_choice?.type === "tool" ? { type: "function", function: { name: input.tool_choice.name } } : "auto" } : {}),
       };
       const response = await fetch(`${base}/chat/completions`, {

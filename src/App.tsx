@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type FormEvent,
@@ -47,7 +48,7 @@ import {
 import { api, type StateResponse, type PlanResponse } from "./api";
 import { Cover, CatalogRow, Shelves } from "./Catalog";
 import { RoomEditor } from "./RoomEditor";
-import type { RoomDesign } from "../shared/room";
+import { validateRoom, type RoomDesign } from "../shared/room";
 import { AgentChat } from "./AgentChat";
 import { ResearchPanel } from "./ResearchPanel";
 import { StudyResults } from "./TasteStudio";
@@ -208,6 +209,31 @@ export default function App({
   const stale =
     plan.status === "draft" &&
     (plan.parentId !== state.currentId || plan.revision !== state.revision);
+  // Interior edits are saved to the draft a moment after the last change, so nothing depends on pressing Save.
+  // An approved layout is never touched: the first autosave forks a draft, later ones update it in place.
+  const savedKey = JSON.stringify(plan.room);
+  useEffect(() => {
+    if (!roomDraft || pendingStudy || busy || stale || JSON.stringify(roomDraft) === savedKey) return;
+    if (plan.status === "approved" && plan.id !== state.currentId) return;
+    if (validateRoom(roomDraft, state.shelves).length) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await api<StateResponse>(`/plans/${plan.id}/edit`, {
+          placements: plan.placements,
+          lockedSkus: plan.locks.map((p) => p.sku),
+          room: roomDraft,
+        });
+        const nextId = result.planId ?? plan.id;
+        setState(result.state);
+        setActivePlanId(nextId);
+        setDetails(await api<PlanResponse>(`/plans/${nextId}`));
+        setNotice("Interior saved automatically to your draft. Approve when you are ready.");
+      } catch {
+        // Keep the unsaved draft and its warning; the manual Save button reports the reason.
+      }
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [roomDraft, savedKey, pendingStudy, busy, stale, plan.id, plan.status]);
   const proposals = state.plans.filter(
     (p) => p.runId === plan.runId && p.variant !== "initial",
   );

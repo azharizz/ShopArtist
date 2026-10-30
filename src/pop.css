@@ -1231,7 +1231,12 @@ summary:focus-visible {
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
 }
+.agent-mode input { accent-color: var(--pop-yellow); }
 /* Capped height — agent conversations grow without bound. */
 .chat-messages {
   max-height: 320px;

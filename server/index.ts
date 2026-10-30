@@ -520,6 +520,7 @@ app.post("/api/agent", async (req, res) => {
     input.room,
     state.shelves,
     input.mode ?? (input.remote ? "openai" : "local"),
+    assetsFor(id),
   );
   res.json({ ...result, changes: roomChanges(input.room, result.room) });
 });

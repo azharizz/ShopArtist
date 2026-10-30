@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Bot, Check, Sparkles, X } from "lucide-react";
 import type { RoomDesign } from "../shared/room";
 import { api } from "./api";
@@ -24,6 +24,14 @@ export function AgentChat({
   >([]);
   const [prompt, setPrompt] = useState("");
   const [useAI, setUseAI] = useState(false);
+  const [aiReady, setAiReady] = useState(false);
+  const touched = useRef(false);
+  // The real agent is the default whenever the server has a key; local commands stay as the fallback.
+  useEffect(() => {
+    api<{ available: boolean }>("/agent")
+      .then(({ available }) => { setAiReady(available); if (available && !touched.current) setUseAI(true); })
+      .catch(() => {});
+  }, []);
   const [pending, setPending] = useState(false);
   const [proposal, setProposal] = useState<{
     result: Proposal;
@@ -73,13 +81,19 @@ export function AgentChat({
       <div className="chat-intro">
         <strong>Big idea? Say the word.</strong>
         <p>
-          Change the mood. Spawn a fixture. Move things around. You have the
-          final say.
+          Change the mood. Spawn or delete fixtures. Rearrange the whole
+          floor. You have the final say.
         </p>
       </div>
-      <span className="agent-mode">
-        {useAI ? "AI AGENT · natural language" : "LOCAL · command agent, not an LLM"}
-      </span>
+      <label className="agent-mode">
+        <input
+          type="checkbox"
+          checked={useAI}
+          disabled={pending || !aiReady}
+          onChange={(e) => { touched.current = true; setUseAI(e.target.checked); }}
+        />
+        {useAI ? "AI AGENT · natural language" : aiReady ? "LOCAL commands · tick to use the AI Agent" : "LOCAL commands · AI Agent key not configured"}
+      </label>
       <div
         className="chat-messages"
         role="log"
@@ -131,7 +145,7 @@ export function AgentChat({
                   ...m,
                   {
                     role: "agent",
-                    text: "Preview applied. Save interior draft to keep it, or Discard to undo. Approval is still yours.",
+                    text: "Preview applied and saved to your draft automatically. Your approved shop is unchanged; approval is still yours.",
                   },
                 ]);
               }}
@@ -198,15 +212,6 @@ export function AgentChat({
           Original procedural assets—not arbitrary generated 3D models. Shelf
           IDs and stock stay protected.
         </p>
-        <label>
-          <input
-            type="checkbox"
-            checked={useAI}
-            disabled={pending}
-            onChange={(e) => setUseAI(e.target.checked)}
-          />
-          Use AI Agent for this request
-        </label>
         <p>
           This sends your message and room layout to the configured AI provider.
           Requires the server’s AI Agent key. No location, catalog or customer data is sent.

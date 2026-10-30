@@ -4,7 +4,7 @@ import { createRoom, fixtureCatalog, fixtureKinds, validateRoom } from "../share
 import { assetRenderers } from "../shared/asset-renderers.js";
 import { existsSync } from "node:fs";
 import { seed } from "./seed.js";
-import { runDesignAgent, buildDirection, researchToolNames, validateTasteTagIds, reviewFailureReason, selectPlaceTags } from "./design-agent.js";
+import { runDesignAgent, parseLooseJson, repairJson, buildDirection, researchToolNames, validateTasteTagIds, reviewFailureReason, selectPlaceTags } from "./design-agent.js";
 import { getAssetDetails, listAssets } from "./asset-tools.js";
 import type { AssetDefinition } from "../shared/assets/types.js";
 
@@ -76,7 +76,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     }
     else {
       name = "create_design_directions";
-      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal. ".repeat(7), evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
+      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal. ".repeat(7), evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [{ fixture_id: "shelf-A", x: -3.3, z: -3.6 + (calls >= 10 ? (calls - 9) * 0.3 : 0), rotation: 0, reason: "Pull the shelf off the wall" }], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
       const direction = calls >= 10 ? make(`Vibrant stories ${calls}`, ["#50a080", "#304080", "#a05020"][calls - 10] ?? "#a05020") : make("Quiet romance", "#c05080");
       if (calls === 5) direction.description = "Short description under 500 chars";
       if (calls === 6) {
@@ -85,14 +85,13 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
       }
       if (calls === 7) {
         assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("wall:")));
-        direction.additions = [{ kind: "plant", x: 0, z: 0, rotation: 0, reason: "Natural accent" }];
+        direction.additions = [{ kind: "no-such-asset", x: 0, z: 0, rotation: 0, reason: "Natural accent" }];
       }
       if (calls === 8) {
         direction.additions = [{ kind: customAsset.id, x: 0, z: -2, rotation: 0, reason: "Cozy display" }];
         assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Only add non-shelf assets whose details")));
       }
       if (calls === 9) { direction.name = "Same room, new title"; direction.additions = [{ kind: customAsset.id, x: 0, z: -2, rotation: 0, reason: "Cozy display" }]; }
-      if (calls === 10) assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("visually identical")));
       if (calls === 9) assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Rejected proposals") && m.content.includes("Quiet romance")));
       args = { directions: calls === 8 ? [{ ...make("Invalid decoration", "#aabbcc"), evidence_ids: [] }, direction] : calls === 9 ? JSON.stringify([direction]) : [direction] };
       assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Charming")));
@@ -105,7 +104,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     const shelves = seed().shelves;
     let reviews = 0;
     const result = await runDesignAgent(brief, createRoom(["coffee", "books"], "modern"), shelves, [...Object.values(fixtureCatalog), customAsset], async () => { if (reviews++ === 0) return { acceptable: false, critique: "The layout needs inspection.", uncertain: false }; throw new Error("review service unavailable"); });
-    assert.equal(calls, 12); assert.equal(result.research.source, "qloo"); assert.equal(result.research.points.length, 1);
+    assert.equal(calls, 11); assert.equal(result.research.source, "qloo"); assert.equal(result.research.points.length, 1);
     assert.deepEqual(result.brief.tags, [tag]); assert.equal(result.directions.length, 4);
     assert.equal(result.directions[0].visualReview?.acceptable, false);
     assert.match(result.directions[0].visualReview?.critique ?? "", /inspection/);
@@ -114,7 +113,9 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     assert.equal(result.directions[0].evidence[0].id, evidence);
     assert.equal(result.directions[0].decisions?.[0].evidence[0].id, evidence);
     assert.ok((result.directions[0].decisions?.[0].interpretation.length ?? 0) > 250);
-    assert.notEqual(result.directions[0].room.accent, result.directions[1].room.accent);
+    // A direction that repeats another room's layout is given a distinct shelf formation rather than being rejected.
+    const shelfSpots = (index: number) => JSON.stringify(result.directions[index].room.fixtures.filter(f => f.kind === "shelf").map(f => [f.x, f.z, f.rotation]));
+    assert.notEqual(shelfSpots(0), shelfSpots(1));
     assert.deepEqual(result.directions[0].room.fixtures.find(f => f.kind === customAsset.id)?.asset, customAsset);
     for (const direction of result.directions) assert.deepEqual(validateRoom(direction.room, shelves), []);
   } finally { globalThis.fetch = originalFetch; for (const key of keys) { if (original[key] === undefined) delete process.env[key]; else process.env[key] = original[key]; } }
@@ -127,6 +128,31 @@ test("out-of-bounds proposals report a boundary failure instead of silently movi
   assert.match(direction.changes[0], /could not fit/);
   assert.match(direction.changes[0], /footprint.*Room/);
   assert.equal(direction.room.fixtures[0].x, room.fixtures[0].x);
+});
+
+test("an overlapping addition is rejected by default and moved to the nearest free spot when snapping", () => {
+  const room = createRoom(["coffee", "books"], "modern"), shelves = seed().shelves, taken = room.fixtures[0];
+  const input = { name: "Test", description: "A practical and welcoming place for people.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [], style: "modern" as const, wall: "#ffffff", floor: "#ffffff", accent: "#ffffff", window: "grid" as const, moves: [], additions: [{ kind: "bench", x: taken.x, z: taken.z, rotation: 0, reason: "Seating" }], asset_idea: { brief: "", reason: "", reference_id: "" } };
+  const catalog = fixtureKinds.map(kind => fixtureCatalog[kind]);
+  assert.match(buildDirection(input, room, shelves, [], catalog).changes[0], /could not fit/);
+  const snapped = buildDirection(input, room, shelves, [], catalog, true);
+  assert.match(snapped.changes[0], /: Seating$/);
+  assert.equal(snapped.room.fixtures.length, room.fixtures.length + 1);
+});
+
+test("loose directions JSON is repaired from fences, wrappers and stray closing braces", () => {
+  assert.deepEqual(parseLooseJson('[{"a":1}]}'), [{ a: 1 }]);
+  assert.deepEqual(parseLooseJson('```json\n[{"a":1}]\n```'), [{ a: 1 }]);
+  assert.deepEqual(parseLooseJson('{"directions":[{"a":1}]}'), [{ a: 1 }]);
+  assert.throws(() => parseLooseJson('[{"a":'), /Not valid JSON/);
+});
+
+test("a model-assisted repair returns the corrected directions and rejects an unusable reply", async () => {
+  let reply = '```json\n[{"name":"Fixed"}]\n```';
+  const client = { messages: { create: async () => ({ content: [{ type: "text", text: reply }] }) } } as unknown as Parameters<typeof repairJson>[0];
+  assert.deepEqual(await repairJson(client, "test-model", '[{"name": "Fixed" "x": 1'), [{ name: "Fixed" }]);
+  reply = "I cannot fix that.";
+  await assert.rejects(repairJson(client, "test-model", "garbage"), /Not valid JSON/);
 });
 
 test("review failure diagnostics classify errors without exposing details", () => {
