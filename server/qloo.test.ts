@@ -35,6 +35,12 @@ test("live Qloo research uses resolved inspiration, location and real results to
     const result = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves);
     const agentResearch = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { placeTags: ["urn:tag:category:place:cafe"], includeProposal: false });
     assert.equal(agentResearch.proposal, undefined);
+    const start = calls.length;
+    const bookResearch = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { culturalTypes: ["book"], includeProposal: false });
+    assert.ok(bookResearch.cultural?.book.length);
+    assert.equal(bookResearch.geographicSummary?.cellCount, 1);
+    assert.ok(calls.slice(start).some(url => url.searchParams.get("filter.type") === "urn:entity:book"));
+    assert.ok(!calls.slice(start).some(url => ["urn:entity:artist", "urn:entity:brand"].includes(url.searchParams.get("filter.type") || "")));
     rejectPlaceSignals = true;
     const fallback = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { placeTags: ["urn:tag:category:place:cafe"], includeProposal: false });
     assert.equal(fallback.places?.[0].name, "Reference café");

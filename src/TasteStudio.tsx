@@ -40,6 +40,7 @@ export function GeographicTasteMap({ points, location, places = [] }: { points: 
 
 export function StudyResults({ study, selectedId, onSelect, compact = false, buildAssets = false }: { study: DesignStudy; selectedId?: string; onSelect?: (id: string) => void; compact?: boolean; buildAssets?: boolean }) {
   const research = study.research;
+  const selectedDirection = study.directions.find(direction => direction.id === selectedId);
   return <div className={`study-results ${compact ? "compact" : ""}`}>
     <div className="study-summary"><div><p className="study-kicker">QLOO RESEARCH · AI AGENT</p><h3>What fits your idea?</h3><p>Qloo connects {research.anchors.map(a => a.name).join(", ") || "your location"} with these cultural signals{research.location !== "No location" ? ` in ${research.location}` : ""}. The AI Agent groups the evidence into design directions.</p></div><div className="study-cues">{research.tags.slice(0, 8).map(tag => <span key={tag.id}>{tag.name}</span>)}</div><p className="small muted">Percentages are Qloo affinity scores, not star ratings or a probability of sales.</p></div>
     {!compact && <div className="direction-section"><div className="direction-heading"><h3>Choose your direction</h3><p>Each concept uses the research differently. Pick one to generate your 3D starting point. Material and lighting ideas are descriptive; the preview uses the available colors, windows, and fixtures.{buildAssets && " If the agent identifies a catalog gap, building may also create and review a custom fixture."}</p></div>
@@ -53,8 +54,14 @@ export function StudyResults({ study, selectedId, onSelect, compact = false, bui
         <span className="direction-changes">{direction.changes.length ? direction.changes.slice(0, 2).join(" · ") : "No fixture moves accepted; position them yourself in the editor."}</span>
         {buildAssets && direction.assetIdea && <span className="direction-asset"><strong>New fixture idea</strong><br />{direction.assetIdea.brief}<br /><small>{direction.assetIdea.reason}</small></span>}
       </button>)}</div></div>}
+    {selectedDirection && <section className="study-map-section" aria-label="Evidence for selected direction">
+      <h3>Why this direction?</h3>
+      <p>Qloo references are research inputs or returned associations. The design choices are the AI Agent’s interpretations, not proven effects of those references.</p>
+      {selectedDirection.decisions?.map((decision, index) => <div key={index}><p><strong>{decision.choice}</strong>: {decision.interpretation}</p>{decision.evidence.length ? <ul>{decision.evidence.map(item => <li key={item.id}><strong>{item.name}</strong> <small>({research.anchors.some(anchor => anchor.id === item.id) ? "selected input" : "Qloo result"}{item.type ? ` · ${item.type}` : ""})</small>{item.description && <> — {item.description}</>}</li>)}</ul> : <p className="small muted">AI suggestion from the brief or practical needs; no Qloo reference cited.</p>}</div>)}
+    </section>}
+    {research.cultural && Object.entries(research.cultural).some(([, items]) => items.length) && <section className="study-map-section"><h3>Cultural references</h3><p>Categories selected by the agent for this shop, based on the same research signals.</p>{Object.entries(research.cultural).map(([type, items]) => items.length ? <p key={type}><strong>{type}:</strong> {items.map(item => item.name).join(", ")}</p> : null)}</section>}
     {!!research.places?.length && <section className="study-map-section"><h3>Local reference places</h3><p>{research.placesContext ?? "Qloo returned these places for the selected taste and location."} They are candidates for inspiration; check their relevance to your shop.</p><ul>{research.places.map(place => <li key={place.id}><strong>{place.name}</strong>{place.description && <> — {place.description}</>}</li>)}</ul></section>}
-    <div className="study-map-section"><div><h3>Explore the local taste map</h3><p>See where affinity for this idea varies across {research.location || "the area"}.</p></div><GeographicTasteMap points={research.points} location={research.location} places={research.places} /></div>
+    <div className="study-map-section"><div><h3>Explore the local taste map</h3><p>See where affinity for this idea varies across {research.location || "the area"}. {research.geographicSummary && `Qloo returned ${research.geographicSummary.cellCount.toLocaleString()} cells; the map shows their relative affinity within this query.`}</p></div><GeographicTasteMap points={research.points} location={research.location} places={research.places} /></div>
     {research.warnings.map(w => <p className="taste-warning" key={w}>{w}</p>)}
   </div>;
 }

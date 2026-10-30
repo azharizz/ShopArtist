@@ -78,7 +78,7 @@ export function designFromTaste(brief: DesignBrief, room: RoomDesign, tags: Tast
   return { room: next, influences, explanation: `ShopArtist uses matching words from your brief and Qloo tags to suggest a ${style} starting palette and ${arrangement} arrangement. Unmatched ideas keep the starting style. Your existing furniture is retained; edit the preview freely before saving.` };
 }
 
-export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves: import("../shared/types.js").Shelf[], options: { placeTags?: string[]; includeProposal?: boolean } = {}): Promise<TasteResearch> {
+export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves: import("../shared/types.js").Shelf[], options: { placeTags?: string[]; includeProposal?: boolean; culturalTypes?: ("artist" | "brand" | "book" | "movie")[] } = {}): Promise<TasteResearch> {
   const anchors = brief.inspirations.flatMap(value => {
     const [id, ...parts] = value.split("|");
     return idPattern.test(id) ? [{ id, name: parts.join("|") || id, type: "" }] : [];
@@ -95,12 +95,14 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
   const heatmap = (anchors.length || tagSignals.length) && (location || brief.latitude !== null)
     ? qloo("/v2/insights", { "filter.type": "urn:heatmap", ...(anchors.length ? { "signal.interests.entities": anchors.map(a => a.id).join(",") } : {}), ...(tagSignals.length ? { "signal.interests.tags": tagSignals.join(",") } : {}), ...(brief.latitude !== null && brief.longitude !== null ? { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) } : { "filter.location.query": location, "filter.location.radius": String(brief.radius) }) })
     : Promise.resolve(null);
-  const [tagResult, ambienceResult, artistResult, brandResult, mapResult, placeResult, decorResult] = await Promise.allSettled([
+  const culturalTypes = options.culturalTypes ?? ["artist", "brand"];
+  const [tagResult, ambienceResult, mapResult, placeResult, decorResult, ...culturalResults] = await Promise.allSettled([
     query("urn:tag"),
     qloo("/v2/insights", { ...signal, "filter.type": "urn:tag", "filter.tag.types": "urn:tag:ambience:qloo", take: "8" }),
-    query("urn:entity:artist"), query("urn:entity:brand"), heatmap,
+    heatmap,
     location || brief.latitude !== null ? qloo("/v2/insights", { ...signal, "filter.type": "urn:entity:place", ...(options.placeTags?.length ? { "filter.tags": options.placeTags.join(",") } : {}), ...(location ? { "filter.location.query": location } : { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) }), take: "8" }) : Promise.resolve({ results: { entities: [] } }),
     qloo("/v2/insights", { ...signal, "filter.type": "urn:tag", "filter.tag.types": "urn:tag:decor:qloo", take: "8" }),
+    ...culturalTypes.map(type => query(`urn:entity:${type}`)),
   ]);
   const warnings: string[] = [];
   function unpack(result: PromiseSettledResult<any>, key: string, label: string): TasteEntity[] {
@@ -114,8 +116,9 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
     ? ambienceResult.value.results.tags.map(entity).filter((item: TasteEntity | null): item is TasteEntity => !!item) : [];
   const decor = decorResult.status === "fulfilled" && Array.isArray(decorResult.value?.results?.tags) ? decorResult.value.results.tags.map(entity).filter((tag: TasteEntity | null): tag is TasteEntity => !!tag) : [];
   const tags: TasteEntity[] = [...ambience, ...decor, ...generalTags].filter((tag, i, all) => all.findIndex(t => t.id === tag.id) === i).slice(0, 12);
-  const artists = unpack(artistResult, "entities", "Artists");
-  const brands = unpack(brandResult, "entities", "Brands");
+  const cultural = Object.fromEntries(culturalTypes.map((type, index) => [type, unpack(culturalResults[index], "entities", type)]));
+  const artists = cultural.artist ?? [];
+  const brands = cultural.brand ?? [];
   let places: TasteEntity[];
   let placesContext = options.placeTags?.length ? "Category-filtered taste-related places" : "Taste-related places; category not filtered";
   if (placeResult.status === "rejected" && (location || brief.latitude !== null)) {
@@ -127,8 +130,8 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
       warnings.push("Taste-ranked places were unavailable; showing local category candidates without a taste ranking.");
     } catch { places = []; warnings.push("Local reference places could not be loaded."); }
   } else places = unpack(placeResult, "entities", "Local reference places");
-  if (!tags.length && !artists.length && !brands.length) {
-    const cause = [tagResult, artistResult, brandResult].find(r => r.status === "rejected");
+  if (!tags.length && !Object.values(cultural).some(items => items.length)) {
+    const cause = [tagResult, ...culturalResults].find(r => r.status === "rejected");
     throw new Error(cause?.status === "rejected" ? cause.reason.message : "Qloo returned no taste results for this brief. Try another location or inspiration.");
   }
   let points: TastePoint[] = [];
@@ -140,5 +143,7 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
       return Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(affinity) ? [{ latitude, longitude, affinity }] : [];
     });
   }
-  return { source: "qloo", location: location || (brief.latitude !== null ? "Selected coordinates" : "No location"), anchors: [...anchors, ...tagSignals.map(id => ({ id, name: id.split(":").at(-1)!.replaceAll("_", " "), type: "tag" }))], tags, artists, brands, places, placesContext, points, warnings, ...(options.includeProposal === false ? {} : { proposal: designFromTaste(brief, room, tags, shelves) }) };
+  const ordered = [...points].sort((a, b) => b.affinity - a.affinity);
+  const geographicSummary = ordered.length ? { cellCount: ordered.length, minAffinity: ordered[ordered.length - 1].affinity, maxAffinity: ordered[0].affinity, centroid: { latitude: ordered.reduce((sum, point) => sum + point.latitude, 0) / ordered.length, longitude: ordered.reduce((sum, point) => sum + point.longitude, 0) / ordered.length }, highest: ordered.slice(0, 5), lowest: ordered.slice(-5).reverse() } : undefined;
+  return { source: "qloo", geographicSummary, cultural, location: location || (brief.latitude !== null ? "Selected coordinates" : "No location"), anchors: [...anchors, ...tagSignals.map(id => ({ id, name: id.split(":").at(-1)!.replaceAll("_", " "), type: "tag" }))], tags, artists, brands, places, placesContext, points, warnings, ...(options.includeProposal === false ? {} : { proposal: designFromTaste(brief, room, tags, shelves) }) };
 }

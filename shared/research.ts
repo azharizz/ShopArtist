@@ -22,6 +22,8 @@ export interface TasteResearch {
   tags: TasteEntity[];
   artists: TasteEntity[];
   brands: TasteEntity[];
+  cultural?: Record<string, TasteEntity[]>;
+  geographicSummary?: { cellCount: number; minAffinity: number; maxAffinity: number; centroid: { latitude: number; longitude: number }; highest: TastePoint[]; lowest: TastePoint[] };
   places?: TasteEntity[];
   placesContext?: string;
   points: TastePoint[];
