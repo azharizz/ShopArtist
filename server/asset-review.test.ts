@@ -21,3 +21,11 @@ test("visual reviewer receives the rendered image and returns a specific critiqu
     for (const [name, value] of [["NEBIUS_API_KEY", key], ["NEBIUS_BASE_URL", base], ["AI_VISION_MODEL", model]]) if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
   }
 });
+
+test("room reviewer marks unsupported cross-view contradictions as uncertain", async () => {
+  const { parseRoomReview } = await import("./room-review.js");
+  const result = parseRoomReview("VERDICT: FAIL\nCRITIQUE: The top view has an inconsistent shelf count compared with the perspective view.");
+  assert.equal(result.uncertain, true);
+  assert.match(result.critique, /inspect manually/);
+  assert.equal(parseRoomReview("VERDICT: PASS\nCRITIQUE: The furniture is visible.").uncertain, false);
+});

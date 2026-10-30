@@ -219,6 +219,8 @@ export function RoomEditor({
                       wall: colors.wall,
                       floor: colors.floor,
                       accent: colors.accent,
+                      furniture: colors.furniture,
+                      frame: colors.frame,
                       window: colors.window,
                     })
                   }
@@ -239,12 +241,12 @@ export function RoomEditor({
             })}
           </div>
           <div className="finish-controls">
-            {(["wall", "floor", "accent"] as const).map((key) => (
+            {(["wall", "floor", "accent", "furniture", "frame"] as const).map((key) => (
               <label key={key}>
                 <input
                   type="color"
                   aria-label={`${key} colour`}
-                  value={room[key]}
+                  value={room[key] ?? stylePalettes[room.style][key as "frame" | "furniture"]}
                   onChange={(event) =>
                     update({ ...room, [key]: event.target.value })
                   }

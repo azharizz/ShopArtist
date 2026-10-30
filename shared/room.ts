@@ -39,6 +39,8 @@ export interface RoomDesign {
   wall: string;
   floor: string;
   accent: string;
+  furniture?: string;
+  frame?: string;
   window: "panoramic" | "grid" | "arched" | "ribbon";
   fixtures: Fixture[];
 }
@@ -296,6 +298,8 @@ export function roomChanges(
     before.wall !== after.wall ||
     before.floor !== after.floor ||
     before.accent !== after.accent ||
+    before.furniture !== after.furniture ||
+    before.frame !== after.frame ||
     before.window !== after.window ||
     before.width !== after.width ||
     before.depth !== after.depth ||

@@ -23,7 +23,7 @@ export interface TasteResearch {
   artists: TasteEntity[];
   brands: TasteEntity[];
   cultural?: Record<string, TasteEntity[]>;
-  geographicSummary?: { cellCount: number; minAffinity: number; maxAffinity: number; centroid: { latitude: number; longitude: number }; highest: TastePoint[]; lowest: TastePoint[] };
+  geographicSummary?: { cellCount: number; minAffinity: number; maxAffinity: number; centroid: { latitude: number; longitude: number }; regions: { name: string; count: number; meanAffinity: number }[]; highest: TastePoint[]; lowest: TastePoint[] };
   places?: TasteEntity[];
   placesContext?: string;
   points: TastePoint[];
@@ -38,7 +38,8 @@ export interface DesignDirection {
   evidence: TasteEntity[];
   room: RoomDesign;
   changes: string[];
-  visualReview?: { acceptable: boolean; critique: string };
+  circulation?: { entranceBlocked: boolean; reachableFreeAreaPercent: number; clearanceMeters: number; gridMeters: number; note: string };
+  visualReview?: { acceptable: boolean; critique: string; uncertain?: boolean };
   decisions?: { choice: string; interpretation: string; evidence: TasteEntity[] }[];
   assetIdea?: { brief: string; reason: string; referenceId?: string };
 }

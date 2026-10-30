@@ -110,7 +110,7 @@ export function ShopScene({
       controls.enablePan = true;
       controls.enableRotate = !topView;
       controls.update();
-      const palette = stylePalettes[room.style];
+      const palette = { ...stylePalettes[room.style], furniture: room.furniture ?? stylePalettes[room.style].furniture, frame: room.frame ?? stylePalettes[room.style].frame };
       scene.add(new THREE.AmbientLight("#eef4ff", 1.7));
       const sun = new THREE.DirectionalLight(
         room.style === "classic" ? "#ffe0b0" : "#ffffff",

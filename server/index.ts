@@ -91,6 +91,8 @@ const roomSchema = z.object({
   wall: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   floor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  furniture: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  frame: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   window: z.enum(["panoramic", "grid", "arched", "ribbon"]),
   fixtures: z
     .array(

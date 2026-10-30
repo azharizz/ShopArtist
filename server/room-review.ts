@@ -8,7 +8,7 @@ import { createAgentClient } from "./ai-bridge.js";
 
 export async function renderRoomViews(room: RoomDesign, shelves: Shelf[]) {
   const scene = new THREE.Group();
-  const palette = stylePalettes[room.style];
+  const palette = { ...stylePalettes[room.style], furniture: room.furniture ?? stylePalettes[room.style].furniture, frame: room.frame ?? stylePalettes[room.style].frame };
   const box = (w: number, h: number, d: number, x: number, y: number, z: number, color: string, parent: THREE.Object3D = scene) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color }));
     mesh.position.set(x, y, z); parent.add(mesh); return mesh;
@@ -39,7 +39,14 @@ export async function reviewRoom(room: RoomDesign, shelves: Shelf[], brief: stri
     messages: [{ role: "user", content: [{ type: "text", text: `Shop concept: ${brief}. Review these top, entrance and three-quarter views for coherence and obstruction.` }, { type: "image", source: { type: "base64", media_type: "image/png", data: image.toString("base64") } }] }],
   });
   const text = response.content.filter(block => block.type === "text").map(block => block.text).join("\n");
+  return parseRoomReview(text);
+}
+
+export function parseRoomReview(text: string) {
   const verdict = text.match(/VERDICT\s*:\s*(PASS|FAIL)/i), critique = text.match(/CRITIQUE\s*:\s*([\s\S]+)/i);
   if (!verdict || !critique) { if (process.env.AI_DEBUG === "1") console.warn("Room review response:", text.slice(0, 1200)); throw new Error("Visual reviewer returned an invalid assessment."); }
-  return { acceptable: verdict[1].toUpperCase() === "PASS", critique: critique[1].trim().slice(0, 1000) };
+  const description = critique[1].trim().slice(0, 1000);
+  // shortcut: reject unverified cross-view contradiction claims until the model can reference individual fixtures reliably.
+  const uncertain = /(?:view|perspective)[\s\S]{0,180}(?:mismatch|inconsisten|contradict|incoheren)|(?:mismatch|inconsisten|contradict|incoheren)[\s\S]{0,180}(?:view|perspective)/i.test(description);
+  return { acceptable: verdict[1].toUpperCase() === "PASS" && !uncertain, critique: uncertain ? `Unverified visual critique; inspect manually: ${description}` : description, uncertain };
 }

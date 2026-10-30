@@ -105,6 +105,7 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
     ...culturalTypes.map(type => query(`urn:entity:${type}`)),
   ]);
   const warnings: string[] = [];
+  if ((location || brief.latitude !== null) && !options.placeTags?.length && options.includeProposal === false) warnings.push("No place category was selected; local results may not match the shop type.");
   function unpack(result: PromiseSettledResult<any>, key: string, label: string): TasteEntity[] {
     if (result.status === "rejected") { warnings.push(`${label} could not be loaded.`); return []; }
     const list = result.value?.results?.[key];
@@ -144,6 +145,11 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
     });
   }
   const ordered = [...points].sort((a, b) => b.affinity - a.affinity);
-  const geographicSummary = ordered.length ? { cellCount: ordered.length, minAffinity: ordered[ordered.length - 1].affinity, maxAffinity: ordered[0].affinity, centroid: { latitude: ordered.reduce((sum, point) => sum + point.latitude, 0) / ordered.length, longitude: ordered.reduce((sum, point) => sum + point.longitude, 0) / ordered.length }, highest: ordered.slice(0, 5), lowest: ordered.slice(-5).reverse() } : undefined;
+  const centroid = ordered.length ? { latitude: ordered.reduce((sum, point) => sum + point.latitude, 0) / ordered.length, longitude: ordered.reduce((sum, point) => sum + point.longitude, 0) / ordered.length } : undefined;
+  const regions = centroid ? ["northwest", "northeast", "southwest", "southeast"].map(name => {
+    const matching = ordered.filter(point => (point.latitude >= centroid.latitude ? "north" : "south") + (point.longitude >= centroid.longitude ? "east" : "west") === name);
+    return { name, count: matching.length, meanAffinity: matching.length ? matching.reduce((sum, point) => sum + point.affinity, 0) / matching.length : 0 };
+  }).filter(region => region.count > 0) : [];
+  const geographicSummary = centroid ? { cellCount: ordered.length, minAffinity: ordered[ordered.length - 1].affinity, maxAffinity: ordered[0].affinity, centroid, regions, highest: ordered.slice(0, 5), lowest: ordered.slice(-5).reverse() } : undefined;
   return { source: "qloo", geographicSummary, cultural, location: location || (brief.latitude !== null ? "Selected coordinates" : "No location"), anchors: [...anchors, ...tagSignals.map(id => ({ id, name: id.split(":").at(-1)!.replaceAll("_", " "), type: "tag" }))], tags, artists, brands, places, placesContext, points, warnings, ...(options.includeProposal === false ? {} : { proposal: designFromTaste(brief, room, tags, shelves) }) };
 }

@@ -101,7 +101,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
   };
   try {
     const shelves = seed().shelves;
-    const result = await runDesignAgent(brief, createRoom(["coffee", "books"], "modern"), shelves, [...Object.values(fixtureCatalog), customAsset], async () => ({ acceptable: true, critique: "The arrangement is visible." }));
+    const result = await runDesignAgent(brief, createRoom(["coffee", "books"], "modern"), shelves, [...Object.values(fixtureCatalog), customAsset], async () => ({ acceptable: true, critique: "The arrangement is visible.", uncertain: false }));
     assert.equal(calls, 9); assert.equal(result.research.source, "qloo"); assert.equal(result.research.points.length, 1);
     assert.deepEqual(result.brief.tags, [tag]); assert.equal(result.directions.length, 2);
     assert.equal(result.directions[0].visualReview?.acceptable, true);
@@ -119,4 +119,15 @@ test("out-of-bounds proposals report a boundary failure instead of silently movi
   const direction = buildDirection({ name: "Test", description: "A practical and welcoming place for people.", evidence_ids: [evidence], decisions: [], style: "modern", wall: "#ffffff", floor: "#ffffff", accent: "#ffffff", window: "grid", moves: [{ fixture_id: room.fixtures[0].id, x: 999, z: 999, rotation: 0, reason: "Test" }], additions: [], asset_idea: { brief: "", reason: "", reference_id: "" } }, room, shelves, [{ id: evidence, name: "Charming", type: "tag" }], Object.values(fixtureCatalog));
   assert.match(direction.changes[0], /could not fit/);
   assert.equal(direction.room.fixtures[0].x, room.fixtures[0].x);
+});
+
+test("circulation estimate detects a blocked entrance and keeps its limitation explicit", async () => {
+  const { assessCirculation } = await import("../shared/room-circulation.js");
+  const room = createRoom(["coffee"], "modern"), shelves = seed().shelves;
+  room.fixtures = [];
+  assert.equal(assessCirculation(room, shelves).entranceBlocked, false);
+  room.fixtures = [{ id: "block", kind: "cashier", label: "Block", x: 0, z: room.depth / 2 - .25, rotation: 0, asset: { ...fixtureCatalog.cashier, width: 2.5, depth: 1 } }];
+  const result = assessCirculation(room, shelves);
+  assert.equal(result.entranceBlocked, true);
+  assert.match(result.note, /not an accessibility/);
 });
