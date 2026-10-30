@@ -308,6 +308,7 @@ app.post("/api/projects/create", async (req, res) => {
       style: z.enum(interiorStyles),
       studyId: z.string().uuid().optional(),
       directionId: z.string().uuid().optional(),
+      generateAsset: z.boolean().default(true),
     })
     .parse(req.body);
   if (new Set(input.focuses).size !== input.focuses.length)
@@ -334,8 +335,8 @@ app.post("/api/projects/create", async (req, res) => {
     if (!direction || direction.room.focuses.join() !== input.focuses.join() || validateRoom(direction.room, state.shelves).length)
       throw new Error("The selected design is no longer valid. Research the current concept again.");
     const catalog = assetsFor(session.id);
-    if (direction.assetIdea && catalog.filter(asset => asset.geometry && asset.source !== "mcp").length >= 50) throw new Error("Your catalog is full. This direction needs space for a new generated fixture.");
-    const built = await buildDirectionAsset(study, direction, state.shelves, catalog);
+    if (input.generateAsset && direction.assetIdea && catalog.filter(asset => asset.geometry && asset.source !== "mcp").length >= 50) throw new Error("Your catalog is full. This direction needs space for a new generated fixture.");
+    const built = await buildDirectionAsset(study, direction, state.shelves, catalog, undefined, input.generateAsset);
     generatedAsset = built.asset;
     state.brief = study.brief;
     state.tasteStudy = { ...study, directions: study.directions.map(item => item.id === direction.id ? built.direction : item), selectedId: direction.id };

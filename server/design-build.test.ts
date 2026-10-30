@@ -39,4 +39,7 @@ test("failed or unplaceable generation does not change the direction", async () 
   assert.deepEqual(direction, before);
   await assert.rejects(buildDirectionAsset(study, direction, shelves, [], create), /reference is no longer/);
   assert.equal((await buildDirectionAsset(study, { ...direction, assetIdea: undefined }, shelves, [], create)).asset, undefined);
+  const skipped = await buildDirectionAsset(study, direction, shelves, [], failure, false);
+  assert.equal(skipped.asset, undefined);
+  assert.deepEqual(skipped.direction, direction);
 });

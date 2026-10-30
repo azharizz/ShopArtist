@@ -48,6 +48,7 @@ export default function Workspace({
   const [focuses, setFocuses] = useState<ShopFocus[]>(["coffee", "books"]);
   const [study, setStudy] = useState<DesignStudy | null>(null);
   const [selectedDirection, setSelectedDirection] = useState("");
+  const [generateAsset, setGenerateAsset] = useState(false);
   const [brief, setBrief] = useState({ ...emptyBrief });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -321,6 +322,7 @@ export default function Workspace({
                   brief,
                   studyId: study?.id,
                   directionId: selectedDirection,
+                  generateAsset,
                 });
                 await openDesign(result.state);
               } catch (e) {
@@ -389,6 +391,7 @@ export default function Workspace({
                 <>
                   <h2>Discover your shop’s direction.</h2>
                   <TasteStudio brief={brief} onBrief={setBrief} room={createRoom(focuses, "modern")} forNewProject={true} study={study} onStudy={setStudy} selectedId={selectedDirection} onSelect={setSelectedDirection} />
+                  {study?.directions.find(direction => direction.id === selectedDirection)?.assetIdea && <label><input type="checkbox" checked={generateAsset} onChange={event => setGenerateAsset(event.target.checked)} /> Generate and review the proposed custom fixture (may take several minutes)</label>}
                 </>
               )}
               </fieldset>
@@ -407,9 +410,9 @@ export default function Workspace({
               ) : (
                 <span>Make it yours. You can change it later.</span>
               )}
-              <button className="button primary" disabled={busy || (step === 1 && (!study || !selectedDirection || brief.location !== study.brief.location || brief.direction !== study.brief.direction || brief.purpose !== study.brief.purpose))}>
+              <button className="button primary" disabled={busy || (step === 1 && (!study || !selectedDirection || brief.location !== study.brief.location || brief.direction !== study.brief.direction || brief.purpose !== study.brief.purpose || JSON.stringify(brief.inspirations) !== JSON.stringify(study.brief.inspirations)))}>
                 {busy
-                  ? (step === 1 && study?.directions.find(direction => direction.id === selectedDirection)?.assetIdea ? "Creating & testing your fixture…" : "Opening your world…")
+                  ? (step === 1 && generateAsset && study?.directions.find(direction => direction.id === selectedDirection)?.assetIdea ? "Creating & testing your fixture…" : "Opening your world…")
                   : step === 1
                     ? "Build this direction"
                     : "Next chapter"}

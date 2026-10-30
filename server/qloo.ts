@@ -96,11 +96,27 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
     ? qloo("/v2/insights", { "filter.type": "urn:heatmap", ...(anchors.length ? { "signal.interests.entities": anchors.map(a => a.id).join(",") } : {}), ...(tagSignals.length ? { "signal.interests.tags": tagSignals.join(",") } : {}), ...(brief.latitude !== null && brief.longitude !== null ? { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) } : { "filter.location.query": location, "filter.location.radius": String(brief.radius) }) })
     : Promise.resolve(null);
   const culturalTypes = options.culturalTypes ?? ["artist", "brand"];
+  const placeLocation: Record<string, string> = location ? { "filter.location.query": location } : { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) };
+  async function findPlaces() {
+    if (!location && brief.latitude === null) return { results: { entities: [] } };
+    const categories = options.placeTags?.length ? options.placeTags : [undefined];
+    const batches = await Promise.allSettled(categories.map(tag => qloo("/v2/insights", { ...signal, "filter.type": "urn:entity:place", ...(tag ? { "filter.tags": tag } : {}), ...placeLocation, take: "8" })));
+    const succeeded = batches.filter((batch): batch is PromiseFulfilledResult<any> => batch.status === "fulfilled");
+    if (!succeeded.length) throw new Error("Place searches failed.");
+    const lists = succeeded.map(batch => Array.isArray(batch.value?.results?.entities) ? batch.value.results.entities : []);
+    const entities: any[] = [];
+    for (let index = 0; index < 8 && entities.length < 8; index++) for (const list of lists) {
+      const item = list[index];
+      if (item && !entities.some(existing => (existing.entity_id ?? existing.id) === (item.entity_id ?? item.id))) entities.push(item);
+      if (entities.length >= 8) break;
+    }
+    return { results: { entities }, partial: succeeded.length < batches.length };
+  }
   const [tagResult, ambienceResult, mapResult, placeResult, decorResult, ...culturalResults] = await Promise.allSettled([
     query("urn:tag"),
     qloo("/v2/insights", { ...signal, "filter.type": "urn:tag", "filter.tag.types": "urn:tag:ambience:qloo", take: "8" }),
     heatmap,
-    location || brief.latitude !== null ? qloo("/v2/insights", { ...signal, "filter.type": "urn:entity:place", ...(options.placeTags?.length ? { "filter.tags": options.placeTags.join(",") } : {}), ...(location ? { "filter.location.query": location } : { "filter.location": `POINT(${brief.longitude} ${brief.latitude})`, "filter.location.radius": String(brief.radius) }), take: "8" }) : Promise.resolve({ results: { entities: [] } }),
+    findPlaces(),
     qloo("/v2/insights", { ...signal, "filter.type": "urn:tag", "filter.tag.types": "urn:tag:decor:qloo", take: "8" }),
     ...culturalTypes.map(type => query(`urn:entity:${type}`)),
   ]);
@@ -130,7 +146,10 @@ export async function researchQloo(brief: DesignBrief, room: RoomDesign, shelves
       placesContext = "Local category candidates only; taste affinity unavailable";
       warnings.push("Taste-ranked places were unavailable; showing local category candidates without a taste ranking.");
     } catch { places = []; warnings.push("Local reference places could not be loaded."); }
-  } else places = unpack(placeResult, "entities", "Local reference places");
+  } else {
+    places = unpack(placeResult, "entities", "Local reference places");
+    if (placeResult.status === "fulfilled" && placeResult.value.partial) warnings.push("Some local place categories could not be loaded.");
+  }
   if (!tags.length && !Object.values(cultural).some(items => items.length)) {
     const cause = [tagResult, ...culturalResults].find(r => r.status === "rejected");
     throw new Error(cause?.status === "rejected" ? cause.reason.message : "Qloo returned no taste results for this brief. Try another location or inspiration.");

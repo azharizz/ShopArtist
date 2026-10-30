@@ -6,8 +6,8 @@ import { assessCirculation } from "../shared/room-circulation.js";
 import type { Shelf } from "../shared/types.js";
 import { createAssetWithAgent } from "./asset-creator.js";
 
-export async function buildDirectionAsset(study: DesignStudy, direction: DesignDirection, shelves: Shelf[], catalog: AssetDefinition[], create = createAssetWithAgent) {
-  if (!direction.assetIdea) return { direction, asset: undefined };
+export async function buildDirectionAsset(study: DesignStudy, direction: DesignDirection, shelves: Shelf[], catalog: AssetDefinition[], create = createAssetWithAgent, generate = true) {
+  if (!generate || !direction.assetIdea) return { direction, asset: undefined };
   const reference = direction.assetIdea.referenceId ? catalog.find(item => item.id === direction.assetIdea!.referenceId) : undefined;
   if (direction.assetIdea.referenceId && !reference) throw new Error("The fixture reference is no longer in your catalog. Research the direction again.");
   const idea = direction.assetIdea;

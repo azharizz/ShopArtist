@@ -23,7 +23,7 @@ test("live Qloo research uses resolved inspiration, location and real results to
     const type = url.searchParams.get("filter.type");
     if (type === "urn:entity:place" && rejectPlaceSignals && url.searchParams.has("signal.interests.tags")) return Response.json({ errors: [] }, { status: 400 });
     if (!(type === "urn:entity:place" && rejectPlaceSignals)) assert.equal(url.searchParams.get("signal.interests.entities"), anchor);
-    if (type === "urn:entity:place") return Response.json({ results: { entities: [{ entity_id: anchor, name: "Reference café", location: { lat: 40.7, lon: -73.9 }, properties: { short_description: "A café" } }] } });
+    if (type === "urn:entity:place") return Response.json({ results: { entities: url.searchParams.get("filter.tags") === "urn:tag:category:place:book_store" ? [{ entity_id: "12345678-1234-1234-1234-123456789012", name: "Reference bookstore" }] : [{ entity_id: anchor, name: "Reference café", location: { lat: 40.7, lon: -73.9 }, properties: { short_description: "A café" } }] } });
     if (type === "urn:heatmap") return Response.json({ results: { heatmap: [{ location: { latitude: 40.7, longitude: -73.9 }, query: { affinity: 0.8 } }] } });
     if (type === "urn:tag") return Response.json({ results: { tags: [{ tag_id: "urn:tag:ambience:qloo:cozy", name: "Cozy" }] } });
     return Response.json({ results: { entities: [{ entity_id: anchor, name: "Sample", query: { affinity: 0.9 } }] } });
@@ -35,6 +35,8 @@ test("live Qloo research uses resolved inspiration, location and real results to
     const result = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves);
     const agentResearch = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { placeTags: ["urn:tag:category:place:cafe"], includeProposal: false });
     assert.equal(agentResearch.proposal, undefined);
+    const mixedResearch = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { placeTags: ["urn:tag:category:place:cafe", "urn:tag:category:place:book_store"], includeProposal: false });
+    assert.deepEqual(mixedResearch.places?.map(place => place.name), ["Reference café", "Reference bookstore"]);
     const start = calls.length;
     const bookResearch = await researchQloo({ ...brief, tags: ["urn:tag:genre:music:jazz"] }, room, seed().shelves, { culturalTypes: ["book"], includeProposal: false });
     assert.ok(bookResearch.cultural?.book.length);
