@@ -4,7 +4,7 @@ import { createRoom, fixtureCatalog, fixtureKinds, validateRoom } from "../share
 import { assetRenderers } from "../src/assets/index.js";
 import { existsSync } from "node:fs";
 import { seed } from "./seed.js";
-import { runDesignAgent, buildDirection } from "./design-agent.js";
+import { runDesignAgent, buildDirection, researchToolNames, validateTasteTagIds } from "./design-agent.js";
 import { getAssetDetails, listAssets } from "./asset-tools.js";
 import type { AssetDefinition } from "../shared/assets/types.js";
 
@@ -76,7 +76,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     }
     else {
       name = "create_design_directions";
-      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal.", evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
+      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal.", evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
       const direction = calls === 9 ? make("Vibrant stories", "#50a080") : make("Quiet romance", "#c05080");
       if (calls === 5) direction.description = "Short description under 500 chars";
       if (calls === 6) {
@@ -120,7 +120,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
 
 test("out-of-bounds proposals report a boundary failure instead of silently moving fixtures", () => {
   const room = createRoom(["coffee", "books"], "modern"), shelves = seed().shelves;
-  const direction = buildDirection({ name: "Test", description: "A practical and welcoming place for people.", evidence_ids: [evidence], decisions: [], style: "modern", wall: "#ffffff", floor: "#ffffff", accent: "#ffffff", window: "grid", moves: [{ fixture_id: room.fixtures[0].id, x: 999, z: 999, rotation: 0, reason: "Test" }], additions: [], asset_idea: { brief: "", reason: "", reference_id: "" } }, room, shelves, [{ id: evidence, name: "Charming", type: "tag" }], Object.values(fixtureCatalog));
+  const direction = buildDirection({ name: "Test", description: "A practical and welcoming place for people.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [], style: "modern", wall: "#ffffff", floor: "#ffffff", accent: "#ffffff", window: "grid", moves: [{ fixture_id: room.fixtures[0].id, x: 999, z: 999, rotation: 0, reason: "Test" }], additions: [], asset_idea: { brief: "", reason: "", reference_id: "" } }, room, shelves, [{ id: evidence, name: "Charming", type: "tag" }], Object.values(fixtureCatalog));
   assert.match(direction.changes[0], /could not fit/);
   assert.equal(direction.room.fixtures[0].x, room.fixtures[0].x);
 });
@@ -134,4 +134,13 @@ test("circulation estimate detects a blocked entrance and keeps its limitation e
   const result = assessCirculation(room, shelves);
   assert.equal(result.entranceBlocked, true);
   assert.match(result.note, /not an accessibility/);
+});
+
+
+test("invalid taste IDs receive valid Qloo choices and searches remain available", () => {
+  const allowed = new Map([[tag, { id: tag, name: "Romantic", type: "urn:tag:ambience:qloo" }]]);
+  assert.throws(() => validateTasteTagIds(["invented"], allowed), error => error instanceof Error && error.message.includes(tag));
+  assert.doesNotThrow(() => validateTasteTagIds([tag], allowed));
+  assert.ok(researchToolNames(5).includes("search_taste_tags"));
+  assert.throws(() => validateTasteTagIds(["invented"], new Map()), /different term/);
 });

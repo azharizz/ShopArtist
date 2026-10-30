@@ -4,11 +4,13 @@ import Workspace from "./Workspace";
 import { api, type StateResponse } from "./api";
 import type { ProjectSummary } from "../shared/design";
 import "./styles.css";
+import "./pop.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 async function start() {
   root.render(
     <div className="loading-screen">
+      <img src="/shopartist-mark.svg" alt="" width="88" height="88" />
       <h1>SHOPARTIST</h1>
       <p>Opening your little worlds…</p>
     </div>,

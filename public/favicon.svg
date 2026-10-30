@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Favicon: the shop mark, simplified so it holds at 16px. -->
+  <rect width="64" height="64" fill="#ffd400" />
+  <path d="M4 30 11 14h42l7 16Z" fill="#ff2e3f" stroke="#14121a" stroke-width="4" stroke-linejoin="round" />
+  <rect x="10" y="30" width="44" height="28" fill="#fffaf0" stroke="#14121a" stroke-width="4" />
+  <rect x="17" y="37" width="14" height="21" fill="#19d3e0" stroke="#14121a" stroke-width="4" />
+  <rect x="38" y="37" width="12" height="12" fill="#ff5fa2" stroke="#14121a" stroke-width="4" />
+</svg>

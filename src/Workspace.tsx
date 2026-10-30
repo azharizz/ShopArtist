@@ -14,7 +14,8 @@ import {
   Store,
 } from "lucide-react";
 import App from "./App";
-import { api, type PlanResponse, type StateResponse } from "./api";
+import { api, apiStream, type PlanResponse, type ProgressEvent, type StateResponse } from "./api";
+import { ResearchLoader } from "./ResearchLoader";
 import {
   shopFocuses,
   createRoom,
@@ -52,6 +53,8 @@ export default function Workspace({
   const [brief, setBrief] = useState({ ...emptyBrief });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [building, setBuilding] = useState(false);
+  const [buildEvents, setBuildEvents] = useState<ProgressEvent[]>([]);
   async function openDesign(next: StoreState) {
     const latest =
       next.plans.findLast(
@@ -103,6 +106,7 @@ export default function Workspace({
     <div className="pop-home">
       <header className="home-header">
         <a className="brand" href="/">
+          <img className="brand-mark" src="/shopartist-mark.svg" alt="" width="34" height="34" />
           SHOP<span>ARTIST</span>
           <sup>®</sup>
         </a>
@@ -120,7 +124,17 @@ export default function Workspace({
           </button>
         </div>
       )}
-      {step === null ? (
+      {building ? (
+        <section className="onboarding building">
+          <ResearchLoader
+            events={buildEvents}
+            step={0}
+            variant="build"
+            idea={`${name || "Your shop"} · ${study?.directions.find((d) => d.id === selectedDirection)?.name ?? "selected direction"}`}
+            location={brief.location}
+          />
+        </section>
+      ) : step === null ? (
         <>
           <section className="pop-hero">
             <div className="hero-copy">
@@ -168,8 +182,20 @@ export default function Workspace({
             </div>
           </section>
           <div className="pop-ticker" aria-label="Supported shop combinations">
-            <span>FASHION</span>✦<span>ART</span>✦<span>COFFEE</span>✦
-            <span>BOOKS</span>✦<span>MIX IT UP</span>✦
+            <div className="ticker-track">
+              {[0, 1].map((copy) => (
+                <div key={copy} aria-hidden={copy === 1}>
+                  {["FASHION", "ART", "COFFEE", "BOOKS", "MIX IT UP"].map(
+                    (word) => (
+                      <span key={word}>
+                        {word}
+                        <i aria-hidden="true" />
+                      </span>
+                    ),
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
           <section className="design-library" id="your-designs">
             <div className="library-heading">
@@ -314,20 +340,46 @@ export default function Workspace({
               }
               setBusy(true);
               setError("");
+              setBuildEvents([]);
+              setBuilding(true);
               try {
-                const result = await api<StateResponse>("/projects/create", {
-                  name,
-                  focuses,
-                  style: "modern",
-                  brief,
-                  studyId: study?.id,
-                  directionId: selectedDirection,
-                  generateAsset,
-                });
+                const result = await apiStream<StateResponse>(
+                  "/projects/create",
+                  {
+                    name,
+                    focuses,
+                    style: "modern",
+                    brief,
+                    studyId: study?.id,
+                    directionId: selectedDirection,
+                    generateAsset,
+                  },
+                  (event) =>
+                    setBuildEvents((current) => {
+                      if (event.status !== "active") {
+                        const open = current.findIndex(
+                          (item) =>
+                            item.status === "active" && item.label === event.label,
+                        );
+                        if (open !== -1)
+                          return current.map((item, i) =>
+                            i === open ? event : item,
+                          );
+                      }
+                      return [...current, event];
+                    }),
+                  undefined,
+                  "state",
+                  (payload) =>
+                    !!payload &&
+                    typeof payload === "object" &&
+                    !!(payload as { state?: unknown }).state,
+                );
                 await openDesign(result.state);
               } catch (e) {
                 setError((e as Error).message);
               } finally {
+                setBuilding(false);
                 setBusy(false);
               }
             }}

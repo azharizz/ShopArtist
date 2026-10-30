@@ -463,7 +463,7 @@ export default function App({
             <span className="eyebrow">THE CURATOR’S NOTE</span>
             <Sparkles size={17} />
           </div>
-          <div className="curator-symbol">✳</div>
+          <div className="curator-symbol" aria-hidden="true" />
           <h2>
             Good things
             <br />
@@ -537,6 +537,7 @@ export default function App({
               onHome();
             }}
           >
+            <img className="brand-mark" src="/shopartist-mark.svg" alt="" width="30" height="30" />
             SHOP<span>ARTIST</span>
             <small>← My designs</small>
           </button>

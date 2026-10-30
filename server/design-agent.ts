@@ -21,7 +21,7 @@ const directionSchema = z.object({
   evidence_ids: z.array(z.string().max(160)).min(1).max(5),
   decisions: z.array(z.object({ choice: z.string().min(1).max(120), interpretation: z.string().min(1).max(250), evidence_ids: z.array(z.string().max(160)).max(4) })).min(1).max(6),
   style: z.enum(["modern", "classic", "industrial", "futuristic"]).optional(),
-  furniture: z.string().regex(/^#[a-f0-9]{6}$/i).optional(), frame: z.string().regex(/^#[a-f0-9]{6}$/i).optional(),
+  furniture: z.string().regex(/^#[a-f0-9]{6}$/i).nullish(), frame: z.string().regex(/^#[a-f0-9]{6}$/i).nullish(),
   wall: z.string().regex(/^#[a-f0-9]{6}$/i), floor: z.string().regex(/^#[a-f0-9]{6}$/i), accent: z.string().regex(/^#[a-f0-9]{6}$/i),
   window: z.enum(["panoramic", "grid", "arched", "ribbon"]),
   moves: z.array(movement).max(12), additions: z.array(addition).max(4),
@@ -75,7 +75,33 @@ export function buildDirection(input: z.infer<typeof directionSchema>, room: Roo
   return { id: randomUUID(), name: input.name, description: input.description, evidence: input.evidence_ids.flatMap(id => evidence.filter(e => e.id === id)).slice(0, 5), room: next, changes, decisions: input.decisions?.map(decision => ({ choice: decision.choice, interpretation: decision.interpretation, evidence: decision.evidence_ids.flatMap(id => evidence.filter(item => item.id === id)) })), ...(input.asset_idea.brief && input.asset_idea.reason ? { assetIdea: { brief: input.asset_idea.brief, reason: input.asset_idea.reason, ...(input.asset_idea.reference_id ? { referenceId: input.asset_idea.reference_id } : {}), ...(input.asset_idea.x !== undefined && input.asset_idea.z !== undefined ? { x: input.asset_idea.x, z: input.asset_idea.z } : {}) } } : {}) };
 }
 
-export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelves: Shelf[], catalog: AssetDefinition[] = fixtureKinds.map(kind => fixtureCatalog[kind]), review = reviewRoom): Promise<DesignStudy> {
+/** Narrates the agent loop for the research loading screen. Never throws into the agent. */
+export type AgentProgress = (event: { phase: string; label: string; detail?: string; status: "active" | "done" | "warn" }) => void;
+const phaseOf: Record<string, string> = {
+  search_taste_tags: "taste", search_inspirations: "taste", research_taste: "research",
+  list_assets: "catalog", get_asset_details: "catalog", create_design_directions: "directions",
+};
+const toolLabel: Record<string, string> = {
+  search_taste_tags: "Finding Qloo taste tags",
+  search_inspirations: "Matching your inspirations",
+  research_taste: "Reading cultural affinities",
+  list_assets: "Browsing the fixture catalog",
+  get_asset_details: "Inspecting fixture details",
+  create_design_directions: "Drafting design directions",
+};
+
+export function researchToolNames(searches: number) {
+  return searches >= 8 ? ["research_taste"] : ["search_taste_tags", "search_inspirations", "research_taste"];
+}
+
+export function validateTasteTagIds(ids: string[], allowed: Map<string, TasteEntity>) {
+  if (ids.every(id => allowed.has(id))) return;
+  const validTags = [...allowed.values()].map(item => ({ id: item.id, name: item.name, type: item.type })).slice(0, 40);
+  throw new Error(validTags.length ? `Unknown tag IDs. Choose exact IDs from these results: ${JSON.stringify(validTags)}` : "No tags were found. Call search_taste_tags with a different term first.");
+}
+
+export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelves: Shelf[], catalog: AssetDefinition[] = fixtureKinds.map(kind => fixtureCatalog[kind]), review = reviewRoom, onProgress: AgentProgress = () => {}): Promise<DesignStudy> {
+  const report: AgentProgress = event => { try { onProgress(event); } catch {} };
   if (!(brief.direction || brief.purpose).trim()) throw new Error("Describe the shop idea first, so the AI Agent can research the right taste.");
   const client = createAgentClient();
   const model = process.env.NEBIUS_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507";
@@ -91,8 +117,10 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
   const detailedAssetIds = new Set<string>();
   const pendingDirections: DesignDirection[] = [];
   const startedAt = Date.now();
+  report({ phase: "brief", label: "Reading your idea", detail: (brief.direction || brief.purpose).slice(0, 90), status: "done" });
   for (let round = 0; round < 24; round++) {
-    const names = !research ? (searches >= 5 ? ["research_taste"] : ["search_taste_tags", "search_inspirations", "research_taste"])
+    report({ phase: "thinking", label: `Agent step ${round + 1}`, detail: "Deciding the next move", status: "active" });
+    const names = !research ? researchToolNames(searches)
       : !listedAssetIds.size ? ["list_assets"]
       : !detailedAssetIds.size ? ["list_assets", "get_asset_details"]
       : round >= 10 ? ["create_design_directions"] : ["list_assets", "get_asset_details", "create_design_directions"];
@@ -109,19 +137,24 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
     }
     const results: { type: "tool_result"; tool_use_id: string; content: string }[] = [];
     for (const call of calls) {
+      const phase = phaseOf[call.name] ?? "thinking";
+      const label = toolLabel[call.name] ?? call.name;
+      report({ phase, label, detail: typeof (call.input as { query?: string })?.query === "string" ? `“${(call.input as { query: string }).query}”` : undefined, status: "active" });
       try {
         if (!names.includes(call.name)) throw new Error("This tool is not available at the current step.");
         if (call.name === "search_taste_tags") {
-          if (++searches > 6) throw new Error("Search limit reached; use the tags already found.");
+          if (++searches > 8) throw new Error("Search limit reached; use the tags already found.");
           const { query } = z.object({ query: z.string().trim().min(2).max(80) }).parse(call.input);
           const matches = await searchQlooTags(query);
           matches.forEach(tag => allowed.set(tag.id, tag));
           results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify({ tags: matches.map(({ id, name, type }) => ({ id, name, type })) }) });
+          report({ phase, label, detail: matches.length ? matches.slice(0, 4).map(tag => tag.name).join(", ") : "No tags matched", status: matches.length ? "done" : "warn" });
         } else if (call.name === "search_inspirations") {
           const { query } = z.object({ query: z.string().trim().min(2).max(80) }).parse(call.input);
           const matches = await searchQloo(query);
           matches.forEach(match => foundInspirations.set(match.id, match));
           results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify({ candidates: matches }) });
+          report({ phase, label, detail: `${matches.length} candidate${matches.length === 1 ? "" : "s"}`, status: "done" });
         } else if (call.name === "research_taste") {
           const { tag_ids, place_tag_ids = [], inspiration_ids = [], cultural_types = [] } = z.object({ tag_ids: z.array(z.string()).min(1).max(3), place_tag_ids: z.array(z.string()).max(3).optional(), inspiration_ids: z.array(z.string()).max(3).optional(), cultural_types: z.array(z.enum(["book", "artist", "brand", "movie"])).max(3).optional() }).parse(call.input);
           if (inspiration_ids.some(id => !foundInspirations.has(id))) throw new Error("Use only inspiration IDs returned by search_inspirations.");
@@ -129,18 +162,21 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
           const availableCategories = [...allowed.values()].filter(item => item.id.startsWith("urn:tag:category:place:"));
           if ((brief.location || brief.latitude !== null) && !place_tag_ids.length && availableCategories.length) throw new Error(`Supply matching place_tag_ids from these search results: ${availableCategories.map(item => `${item.name}: ${item.id}`).join(", ")}. Choose only categories that fit the brief.`);
           if (place_tag_ids.some(id => !allowed.has(id) || !id.startsWith("urn:tag:category:place:"))) throw new Error("Place filters must be place category tags returned by search_taste_tags.");
-          if (tag_ids.some(id => !allowed.has(id))) throw new Error("Use only tag IDs returned by search_taste_tags.");
+          validateTasteTagIds(tag_ids, allowed);
           chosenTags = tag_ids;
           research = await researchQloo({ ...brief, inspirations: resolvedInspirations, tags: tag_ids }, room, shelves, { placeTags: place_tag_ids, culturalTypes: [...new Set(cultural_types)], includeProposal: false });
           const { tags, cultural, places, placesContext, anchors, location, geographicSummary, warnings } = research;
           results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify({ location, anchors, tags, cultural, places, placesContext, warnings, geography: { ...geographicSummary, note: "Aggregate affinity, not foot traffic or demand; coordinate extremes are not neighborhood names; interpret cautiously." } }) });
+          report({ phase, label, detail: `${tags.length} signals · ${places?.length ?? 0} places · ${geographicSummary?.cellCount?.toLocaleString() ?? 0} map cells`, status: "done" });
         } else if (call.name === "list_assets") {
           const result = listAssets(call.input, listedAssetIds, catalog);
           results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify(result) });
+          report({ phase, label, detail: `${listedAssetIds.size} assets seen`, status: "done" });
         } else if (call.name === "get_asset_details") {
           const result = getAssetDetails(call.input, listedAssetIds, catalog);
           result.assets.forEach(asset => detailedAssetIds.add(asset.id));
           results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify(result) });
+          report({ phase, label, detail: result.assets.map(asset => asset.label).slice(0, 4).join(", "), status: "done" });
         } else if (call.name === "create_design_directions") {
           if (!research) throw new Error("Call research_taste successfully before creating directions.");
           const raw = call.input as { directions?: unknown };
@@ -166,15 +202,19 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
             const placementIssues = built.changes.filter(change => change.includes("could not fit") || change.startsWith("Could not move"));
             if (placementIssues.length) { issues.push(`${direction.name}: ${placementIssues.join(" ")} Revise the positions and submit again.`); continue; }
             if (pendingDirections.some(existing => existing.name.toLowerCase() === built.name.toLowerCase())) continue;
+            report({ phase: "review", label: `Visual review · ${built.name}`, detail: "Rendering the room and checking it", status: "active" });
             try {
               built.visualReview = await review(built.room, shelves, brief.direction || brief.purpose);
               // The visual reviewer is advisory; uncertain model output must not block a valid design.
             } catch { built.visualReview = { acceptable: false, available: false, critique: "Visual review was unavailable; inspect the room manually." }; }
             pendingDirections.push(built);
+            report({ phase: "review", label: `Direction ready · ${built.name}`, detail: built.visualReview?.acceptable ? "Visual review passed" : "Saved with review notes", status: built.visualReview?.acceptable ? "done" : "warn" });
           }
+          for (const issue of issues) report({ phase: "directions", label: "Revising a proposal", detail: issue.slice(0, 120), status: "warn" });
           if (process.env.AI_DEBUG === "1") console.info("AI Agent direction validation", { accepted: pendingDirections.length, rejected: issues });
           if (pendingDirections.length >= 2 || (pendingDirections.length && Date.now() - startedAt >= 120_000)) {
             if (pendingDirections.length === 1) research.warnings.push("One direction is ready; research again if you want more alternatives.");
+            report({ phase: "done", label: `${pendingDirections.length} direction${pendingDirections.length === 1 ? "" : "s"} ready`, detail: pendingDirections.map(item => item.name).join(" · "), status: "done" });
             return { id: randomUUID(), brief: { ...brief, tags: chosenTags }, research, directions: pendingDirections.slice(0, 3), createdAt: new Date().toISOString() };
           }
           results.push({ type: "tool_result", tool_use_id: call.id, content: `${issues.length ? `Rejected proposals: ${issues.join(" ")} ` : ""}Saved direction names: ${pendingDirections.map(direction => direction.name).join(", ") || "none"}. Call create_design_directions with ${pendingDirections.length ? "at least one new direction" : "two distinct directions"} whose name, design and fixture idea differ from every saved direction. Do not repeat a saved name.` });
@@ -182,6 +222,7 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
       } catch (error) {
         if (process.env.AI_DEBUG === "1") console.warn("AI Agent tool failed", call.name, error instanceof z.ZodError ? error.issues.map(issue => `${issue.path.join(".")}: ${issue.message}`).join("; ") : error instanceof Error ? error.message : "unknown error");
         results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify({ error: error instanceof Error ? error.message : "Tool failed" }) });
+        report({ phase, label, detail: `Retrying — ${error instanceof Error ? error.message.slice(0, 110) : "tool failed"}`, status: "warn" });
       }
     }
     messages.push({ role: "user", content: results });

@@ -1,11 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ArrowRight, MapPin, Sparkles } from "lucide-react";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { DesignBrief } from "../shared/design";
 import type { RoomDesign } from "../shared/room";
 import type { DesignStudy, TastePoint, TasteEntity } from "../shared/research";
-import { api } from "./api";
+import { api, apiStream, type ProgressEvent } from "./api";
+import { ResearchLoader } from "./ResearchLoader";
 
 export function GeographicTasteMap({ points, location, places = [] }: { points: TastePoint[]; location: string; places?: TasteEntity[] }) {
   const mountMap = useCallback((node: HTMLDivElement | null) => {
@@ -27,8 +28,16 @@ export function GeographicTasteMap({ points, location, places = [] }: { points: 
       L.circleMarker(latLng, { radius: 6, color: "#25212c", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }).bindTooltip(label).addTo(map);
     }
     map.fitBounds(bounds, { padding: [15, 15], maxZoom: 13 });
+    // The map often mounts inside a dialog or a grid that is still laying out,
+    // so a single delayed invalidateSize leaves Leaflet sized to 0 and blank.
+    // Watch the element instead and re-fit whenever it actually changes size.
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [15, 15], maxZoom: 13 });
+    });
+    observer.observe(node);
     const timer = window.setTimeout(() => map.invalidateSize(), 150);
-    return () => { window.clearTimeout(timer); map.remove(); };
+    return () => { window.clearTimeout(timer); observer.disconnect(); map.remove(); };
   }, [points, places]);
   if (!points.length && !places.some(p => p.latitude != null && p.longitude != null)) return <div className="taste-map-empty"><MapPin size={22} /><p>No geographic data returned. Add a location and research again.</p></div>;
   return <div className="geographic-map-wrap">
@@ -62,7 +71,7 @@ export function StudyResults({ study, selectedId, onSelect, compact = false, bui
     </section>}
     {research.cultural && Object.entries(research.cultural).some(([, items]) => items.length) && <section className="study-map-section"><h3>Cultural references</h3><p>Categories selected by the agent for this shop, based on the same research signals.</p>{Object.entries(research.cultural).map(([type, items]) => items.length ? <p key={type}><strong>{type}:</strong> {items.map(item => item.name).join(", ")}</p> : null)}</section>}
     {!!research.places?.length && <section className="study-map-section"><h3>Local reference places</h3><p>{research.placesContext ?? "Qloo returned these places for the selected taste and location."} They are candidates for inspiration; check their relevance to your shop.</p><ul>{research.places.map(place => <li key={place.id}><strong>{place.name}</strong>{place.description && <> — {place.description}</>}</li>)}</ul></section>}
-    <div className="study-map-section"><div><h3>Explore the local taste map</h3><p>See where affinity for this idea varies across {research.location || "the area"}. {research.geographicSummary && `Qloo returned ${research.geographicSummary.cellCount.toLocaleString()} cells; the map shows their relative affinity within this query.`}</p></div><GeographicTasteMap points={research.points} location={research.location} places={research.places} />{research.geographicSummary?.regions && <p className="small muted">Within this query, sampled map cells are grouped around their geographic center: {research.geographicSummary.regions.map(region => `${region.name} (${region.count} cells)`).join(", ")}. Of these groups, {[...research.geographicSummary.regions].sort((a, b) => b.meanAffinity - a.meanAffinity)[0]?.name} has the highest average affinity in this query. These are relative areas, not named neighborhoods or estimates of visitors.</p>}</div>
+    <div className="study-map-section taste-map-feature"><div><h3>Explore the local taste map</h3><p>See where affinity for this idea varies across {research.location || "the area"}. {research.geographicSummary && `Qloo returned ${research.geographicSummary.cellCount.toLocaleString()} cells; the map shows their relative affinity within this query.`}</p></div><GeographicTasteMap points={research.points} location={research.location} places={research.places} />{research.geographicSummary?.regions && <p className="small muted">Within this query, sampled map cells are grouped around their geographic center: {research.geographicSummary.regions.map(region => `${region.name} (${region.count} cells)`).join(", ")}. Of these groups, {[...research.geographicSummary.regions].sort((a, b) => b.meanAffinity - a.meanAffinity)[0]?.name} has the highest average affinity in this query. These are relative areas, not named neighborhoods or estimates of visitors.</p>}</div>
     {research.warnings.map(w => <p className="taste-warning" key={w}>{w}</p>)}
   </div>;
 }
@@ -72,6 +81,9 @@ export function TasteStudio({ brief, onBrief, room, forNewProject, study, onStud
   study: DesignStudy | null; onStudy: (study: DesignStudy | null) => void; selectedId: string; onSelect: (id: string) => void; onApply?: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [events, setEvents] = useState<ProgressEvent[]>([]);
+  const [step, setStep] = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
   const [inspirationQuery, setInspirationQuery] = useState("");
   const [matches, setMatches] = useState<TasteEntity[]>([]);
   const [searchBusy, setSearchBusy] = useState(false);
@@ -82,11 +94,31 @@ export function TasteStudio({ brief, onBrief, room, forNewProject, study, onStud
   }
   const dirty = !!study && (brief.location !== study.brief.location || brief.direction !== study.brief.direction || brief.purpose !== study.brief.purpose || JSON.stringify(brief.inspirations) !== JSON.stringify(study.brief.inspirations));
   async function research() {
-    setBusy(true); setError(""); onStudy(null); onSelect("");
-    try { const result = await api<DesignStudy>("/ai/research", { brief, room, forNewProject }); onStudy(result); }
-    catch (e) { setError((e as Error).message); }
-    finally { setBusy(false); }
+    setBusy(true); setError(""); setEvents([]); setStep(0); onStudy(null); onSelect("");
+    const abort = new AbortController();
+    abortRef.current = abort;
+    try {
+      const result = await apiStream<DesignStudy>("/ai/research", { brief, room, forNewProject },
+        // Transient rows collapse: "thinking" ticks replace each other, and a tool's
+        // resolved result overwrites its own still-active row instead of stacking.
+        event => {
+        if (event.phase === "thinking") setStep(n => n + 1);
+        setEvents(current => {
+          const kept = current.filter(item => item.phase !== "thinking");
+          if (event.status !== "active") {
+            const open = kept.findIndex(item => item.status === "active" && item.label === event.label);
+            if (open !== -1) return kept.map((item, i) => (i === open ? event : item));
+          }
+          return [...kept, event];
+        });
+        }, abort.signal);
+      onStudy(result);
+    }
+    catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
+    finally { abortRef.current = null; setBusy(false); }
   }
+  if (busy) return <ResearchLoader events={events} step={step} idea={brief.direction || brief.purpose} location={brief.location}
+    onCancel={() => { abortRef.current?.abort(); abortRef.current = null; setBusy(false); setEvents([]); }} />;
   return <div className="taste-studio">
     <div className="taste-studio-fields">
       <label>Your shop idea<textarea rows={3} value={brief.direction ?? ""} maxLength={500} placeholder="A romantic bookshop and café with quiet corners and warm light…" onChange={e => onBrief({ ...brief, direction: e.target.value })} /></label>

@@ -29,7 +29,20 @@ const tools: Tool[] = [
   { name: "save_asset", description: "Persist the successfully tested asset to the user's catalog.", input_schema: object({}, []) },
 ];
 
-export async function createAssetWithAgent(request: string, reference: AssetDefinition | undefined, save: (asset: AssetDefinition) => void, services = { renderAssetViews, reviewAssetImage }) {
+/** Narrates the fixture pipeline for the build loading screen. Never throws into the agent. */
+export type AssetProgress = (event: { phase: string; label: string; detail?: string; status: "active" | "done" | "warn" }) => void;
+const stageLabel: Record<string, string> = {
+  inspect_reference: "Studying the reference fixture",
+  plan_asset: "Planning the fixture",
+  draft_asset: "Drafting the parts",
+  test_asset: "Testing the geometry",
+  preview_asset: "Rendering three views",
+  review_asset: "Visual review",
+  save_asset: "Saving to your catalog",
+};
+
+export async function createAssetWithAgent(request: string, reference: AssetDefinition | undefined, save: (asset: AssetDefinition) => void, services = { renderAssetViews, reviewAssetImage }, onProgress: AssetProgress = () => {}) {
+  const report: AssetProgress = event => { try { onProgress(event); } catch {} };
   const client = createAgentClient();
   const model = process.env.NEBIUS_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507";
   const messages: MessageParam[] = [{ role: "user", content: JSON.stringify({ request, referenceId: reference?.id ?? null }) }];
@@ -51,6 +64,7 @@ export async function createAssetWithAgent(request: string, reference: AssetDefi
   }
   for (let round = 0; round < 26; round++) {
     if (process.env.AI_DEBUG === "1") console.info("Asset agent step", round + 1, stage);
+    report({ phase: "fixture", label: stageLabel[stage] ?? stage, status: "active" });
     const tool = tools.find(item => item.name === stage)!;
     let response: Awaited<ReturnType<typeof client.messages.create>>;
     try { response = await client.messages.create({ model, max_tokens: 3500, tools: [tool], tool_choice: { type: "tool", name: stage }, messages,
@@ -69,8 +83,10 @@ export async function createAssetWithAgent(request: string, reference: AssetDefi
       } else if (stage === "plan_asset") {
         const plan = z.object({ brief: z.string().min(5).max(1000), construction: z.string().min(5).max(1000) }).strict().parse(call.input);
         optimizedBrief = plan.brief; result = { accepted: true, ...plan }; stage = "draft_asset";
+        report({ phase: "fixture", label: stageLabel.plan_asset, detail: plan.brief.slice(0, 110), status: "done" });
       } else if (stage === "draft_asset") {
         draft = draftSchema.parse(call.input); tested = undefined; preview = undefined; result = { accepted: true, next: "test_asset" }; stage = "test_asset";
+        report({ phase: "fixture", label: stageLabel.draft_asset, detail: `${draft.label} · ${draft.parts.length} parts`, status: "done" });
       } else if (stage === "test_asset") {
         if (!draft) throw new Error("Draft an asset first.");
         try {
@@ -79,12 +95,14 @@ export async function createAssetWithAgent(request: string, reference: AssetDefi
           try { checkShelfConstruction(draft.label.replace(/([a-z0-9])([A-Z])/g, "$1 $2"), draft.parts); }
           catch (error) { warning = error instanceof Error ? error.message : "The shelf construction may be incomplete."; }
           result = { ok: true, width: tested.width, depth: tested.depth, heightApprox: tested.heightApprox, meshes: tested.meshes, ...(warning ? { warning } : {}) }; stage = "preview_asset";
+          report({ phase: "fixture", label: stageLabel.test_asset, detail: warning ?? `${tested.width.toFixed(2)} × ${tested.depth.toFixed(2)} × ${tested.heightApprox.toFixed(2)} m`, status: warning ? "warn" : "done" });
         }
-        catch (error) { stage = "draft_asset"; throw error; }
+        catch (error) { stage = "draft_asset"; report({ phase: "fixture", label: stageLabel.test_asset, detail: "Geometry failed; redrafting", status: "warn" }); throw error; }
       } else if (stage === "preview_asset") {
         if (!draft || !tested) throw new Error("Test the draft before rendering.");
         preview = await services.renderAssetViews(draft.parts);
         result = { rendered: true, views: ["front", "side", "three-quarter"] }; stage = "review_asset";
+        report({ phase: "fixture", label: stageLabel.preview_asset, detail: "front · side · three-quarter", status: "done" });
       } else if (stage === "review_asset") {
         if (!draft || !preview) throw new Error("Render the draft before visual review.");
         reviewAttempts++;
@@ -93,6 +111,7 @@ export async function createAssetWithAgent(request: string, reference: AssetDefi
         lastReviewed = { draft, tested: tested! };
         if (process.env.AI_DEBUG === "1") console.info("Visual review", visualReviews.length, review.acceptable ? "accepted" : "needs revision", review.critique);
         result = { ...review, reviewNumber: visualReviews.length, maximumReviews: 3 };
+        report({ phase: "fixture", label: `${stageLabel.review_asset} ${visualReviews.length}/3`, detail: review.critique.slice(0, 120), status: review.acceptable ? "done" : "warn" });
         stage = review.acceptable || reviewAttempts >= 3 ? "save_asset" : "draft_asset";
       } else {
         if (!lastReviewed) throw new Error("Test and review the current draft before saving.");

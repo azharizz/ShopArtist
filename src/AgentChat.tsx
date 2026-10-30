@@ -88,7 +88,7 @@ export function AgentChat({
       >
         {messages.length === 0 && (
           <div className="chat-empty">
-            <span>✦</span>
+            <span className="chat-empty-mark" aria-hidden="true" />
             <p>
               Your next “what if”
               <br />

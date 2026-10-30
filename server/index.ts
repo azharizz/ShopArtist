@@ -316,6 +316,14 @@ app.post("/api/projects/create", async (req, res) => {
   const session = sessions.get(req)!;
   if (activeBuilds.has(session.id)) throw Object.assign(new Error("A design is already being built. Please wait."), { status: 409 });
   activeBuilds.add(session.id);
+  // Streams build progress as SSE when asked; the JSON contract is unchanged otherwise.
+  const streaming = req.headers.accept?.includes("text/event-stream");
+  let send: (event: string, data: unknown) => void = () => {};
+  if (streaming) {
+    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+    send = (event, data) => { if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); };
+    send("progress", { phase: "brief", label: "Setting up your shop", detail: input.name, status: "done" });
+  }
   try {
   const count = db
     .prepare("SELECT COUNT(*) AS n FROM projects WHERE owner=?")
@@ -336,7 +344,7 @@ app.post("/api/projects/create", async (req, res) => {
       throw new Error("The selected design is no longer valid. Research the current concept again.");
     const catalog = assetsFor(session.id);
     if (input.generateAsset && direction.assetIdea && catalog.filter(asset => asset.geometry && asset.source !== "mcp").length >= 50) throw new Error("Your catalog is full. This direction needs space for a new generated fixture.");
-    const built = await buildDirectionAsset(study, direction, state.shelves, catalog, undefined, input.generateAsset);
+    const built = await buildDirectionAsset(study, direction, state.shelves, catalog, undefined, input.generateAsset, event => send("progress", event));
     generatedAsset = built.asset;
     state.brief = study.brief;
     state.tasteStudy = { ...study, directions: study.directions.map(item => item.id === direction.id ? built.direction : item), selectedId: direction.id };
@@ -356,7 +364,14 @@ app.post("/api/projects/create", async (req, res) => {
     persist(req);
     db.exec("COMMIT");
   } catch (error) { db.exec("ROLLBACK"); throw error; }
-  res.json({ state });
+  if (!streaming) { res.json({ state }); return; }
+  send("progress", { phase: "done", label: "Your shop is ready", detail: state.store.name, status: "done" });
+  send("state", { state });
+  res.end();
+  } catch (error) {
+    if (!streaming) throw error;
+    send("failed", { error: error instanceof Error ? error.message : "The design could not be built." });
+    res.end();
   } finally { activeBuilds.delete(session.id); }
 });
 app.post("/api/projects/:id/load", (req, res) => {
@@ -413,11 +428,27 @@ app.post("/api/ai/research", limitQloo, async (req, res) => {
   const shelves = input.forNewProject ? seed().shelves : session.state.shelves;
   const errors = validateRoom(input.room, shelves);
   if (errors.length) { res.status(422).json({ error: "Invalid room.", errors }); return; }
-  const study = await runDesignAgent(input.brief, input.room, shelves, assetsFor(session.id));
-  const now = Date.now();
-  for (const [key, record] of studies) if (record.expires < now || (record.owner === session.id && record.forNewProject === input.forNewProject)) studies.delete(key);
-  studies.set(study.id, { owner: session.id, projectId: session.state.projectId, forNewProject: input.forNewProject, study, expires: now + 30 * 60 * 1000 });
-  res.json(study);
+  // Progress is streamed as SSE when the client asks for it; the JSON contract is unchanged otherwise.
+  const streaming = req.headers.accept?.includes("text/event-stream");
+  let send: (event: string, data: unknown) => void = () => {};
+  if (streaming) {
+    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+    send = (event, data) => { if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); };
+    send("progress", { phase: "connect", label: "Waking the design agent", status: "active" });
+  }
+  try {
+    const study = await runDesignAgent(input.brief, input.room, shelves, assetsFor(session.id), undefined, event => send("progress", event));
+    const now = Date.now();
+    for (const [key, record] of studies) if (record.expires < now || (record.owner === session.id && record.forNewProject === input.forNewProject)) studies.delete(key);
+    studies.set(study.id, { owner: session.id, projectId: session.state.projectId, forNewProject: input.forNewProject, study, expires: now + 30 * 60 * 1000 });
+    if (!streaming) { res.json(study); return; }
+    send("study", study);
+    res.end();
+  } catch (error) {
+    if (!streaming) throw error;
+    send("failed", { error: error instanceof Error ? error.message : "The AI Agent could not finish the research." });
+    res.end();
+  }
 });
 app.post("/api/ai/apply", (req, res) => {
   const input = z.object({ studyId: z.string().uuid(), directionId: z.string().uuid() }).parse(req.body);
