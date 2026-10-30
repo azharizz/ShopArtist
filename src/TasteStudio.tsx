@@ -47,6 +47,7 @@ export function StudyResults({ study, selectedId, onSelect, compact = false, bui
         <h4>{direction.name}</h4><p>{direction.description}</p>
         <span className="direction-evidence">Qloo evidence: {direction.evidence.map(item => item.name).join(" · ")}</span>
         <span className="direction-colors" aria-label="Proposed colours">{[direction.room.wall, direction.room.floor, direction.room.accent].map((color, index) => <i key={index} style={{ background: color }} />)}</span>
+        {!!direction.decisions?.length && <span className="direction-decisions">{direction.decisions.map((decision, index) => <span key={index} style={{ display: "block", marginTop: 8 }}><strong>{decision.choice}</strong> — AI interpretation: {decision.interpretation}<br /><small>{decision.evidence.length ? `Qloo signals: ${decision.evidence.map(item => item.name).join(", ")}` : "AI suggestion based on the brief or practical needs"}</small></span>)}</span>}
         <span className="direction-changes">{direction.changes.length ? direction.changes.slice(0, 2).join(" · ") : "No fixture moves accepted; position them yourself in the editor."}</span>
         {buildAssets && direction.assetIdea && <span className="direction-asset"><strong>New fixture idea</strong><br />{direction.assetIdea.brief}<br /><small>{direction.assetIdea.reason}</small></span>}
       </button>)}</div></div>}

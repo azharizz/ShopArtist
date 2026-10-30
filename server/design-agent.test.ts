@@ -76,7 +76,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     }
     else {
       name = "create_design_directions";
-      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
+      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal.", evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
       const direction = calls === 9 ? make("Vibrant stories", "#50a080") : make("Quiet romance", "#c05080");
       if (calls === 5) direction.description = "Short description under 500 chars";
       if (calls === 6) {
@@ -105,6 +105,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     assert.equal(calls, 9); assert.equal(result.research.source, "qloo"); assert.equal(result.research.points.length, 1);
     assert.deepEqual(result.brief.tags, [tag]); assert.equal(result.directions.length, 2);
     assert.equal(result.directions[0].evidence[0].id, evidence);
+    assert.equal(result.directions[0].decisions?.[0].evidence[0].id, evidence);
     assert.notEqual(result.directions[0].room.accent, result.directions[1].room.accent);
     assert.deepEqual(result.directions[0].room.fixtures.find(f => f.kind === customAsset.id)?.asset, customAsset);
     for (const direction of result.directions) assert.deepEqual(validateRoom(direction.room, shelves), []);

@@ -35,6 +35,7 @@ export interface DesignDirection {
   evidence: TasteEntity[];
   room: RoomDesign;
   changes: string[];
+  decisions?: { choice: string; interpretation: string; evidence: TasteEntity[] }[];
   assetIdea?: { brief: string; reason: string; referenceId?: string };
 }
 export interface DesignStudy {
