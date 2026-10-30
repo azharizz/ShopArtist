@@ -2,7 +2,7 @@ import type { AssetDefinition } from "./types.js";
 
 export default {
   "label": "Hat Display Stand",
-  "description": "Freestanding upright with short cross arms and round hat-like forms.",
+  "description": "Freestanding stand with four stylized wide-brim hats, each with a crown and contrasting band.",
   "function": "Display hats and accessories.",
   "moodTags": [
     "fashion",
@@ -72,49 +72,129 @@ export default {
     },
     {
       "shape": "cylinder",
-      "width": 0.24,
-      "height": 0.1,
-      "depth": 0.24,
+      "width": 0.29,
+      "height": 0.035,
+      "depth": 0.29,
       "x": -0.28,
-      "y": 0.76,
+      "y": 0.7374999999999999,
       "z": 0,
-      "color": "#f0dfc8"
+      "color": "#e6d2b2"
     },
     {
       "shape": "cylinder",
-      "width": 0.24,
-      "height": 0.1,
-      "depth": 0.24,
-      "x": 0.28,
-      "y": 1.11,
-      "z": 0,
-      "color": "#f0dfc8"
-    },
-    {
-      "shape": "cylinder",
-      "width": 0.24,
-      "height": 0.1,
-      "depth": 0.24,
+      "width": 0.15,
+      "height": 0.15,
+      "depth": 0.15,
       "x": -0.28,
-      "y": 1.46,
+      "y": 0.83,
       "z": 0,
-      "color": "#f0dfc8"
+      "color": "#e6d2b2"
     },
     {
       "shape": "cylinder",
-      "width": 0.24,
-      "height": 0.1,
-      "depth": 0.24,
-      "x": 0.28,
-      "y": 1.76,
+      "width": 0.16,
+      "height": 0.035,
+      "depth": 0.16,
+      "x": -0.28,
+      "y": 0.7825,
       "z": 0,
-      "color": "#f0dfc8"
+      "color": "#c3a46b"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.29,
+      "height": 0.035,
+      "depth": 0.29,
+      "x": 0.28,
+      "y": 1.0875000000000001,
+      "z": 0,
+      "color": "#b9786c"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.15,
+      "height": 0.15,
+      "depth": 0.15,
+      "x": 0.28,
+      "y": 1.1800000000000002,
+      "z": 0,
+      "color": "#b9786c"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.16,
+      "height": 0.035,
+      "depth": 0.16,
+      "x": 0.28,
+      "y": 1.1325,
+      "z": 0,
+      "color": "#c3a46b"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.29,
+      "height": 0.035,
+      "depth": 0.29,
+      "x": -0.28,
+      "y": 1.4375,
+      "z": 0,
+      "color": "#394454"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.15,
+      "height": 0.15,
+      "depth": 0.15,
+      "x": -0.28,
+      "y": 1.5299999999999998,
+      "z": 0,
+      "color": "#394454"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.16,
+      "height": 0.035,
+      "depth": 0.16,
+      "x": -0.28,
+      "y": 1.4825,
+      "z": 0,
+      "color": "#c3a46b"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.29,
+      "height": 0.035,
+      "depth": 0.29,
+      "x": 0.28,
+      "y": 1.7375,
+      "z": 0,
+      "color": "#e6d2b2"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.15,
+      "height": 0.15,
+      "depth": 0.15,
+      "x": 0.28,
+      "y": 1.83,
+      "z": 0,
+      "color": "#e6d2b2"
+    },
+    {
+      "shape": "cylinder",
+      "width": 0.16,
+      "height": 0.035,
+      "depth": 0.16,
+      "x": 0.28,
+      "y": 1.7825,
+      "z": 0,
+      "color": "#c3a46b"
     }
   ],
   "id": "generated-7d52e2a3-96f6-4ea2-b904-c76f75f981f8",
-  "width": 0.8,
+  "width": 0.85,
   "depth": 0.42,
-  "heightApprox": 1.83,
+  "heightApprox": 1.91,
   "coloring": "Room-linked colors: frame. Other colors are fixed.",
   "visualReference": "/asset-catalog.html#generated-7d52e2a3-96f6-4ea2-b904-c76f75f981f8",
   "implementation": "shared/generated-assets.ts",
