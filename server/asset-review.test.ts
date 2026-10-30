@@ -29,3 +29,28 @@ test("room reviewer marks unsupported cross-view contradictions as uncertain", a
   assert.match(result.critique, /inspect manually/);
   assert.equal(parseRoomReview("VERDICT: PASS\nCRITIQUE: The furniture is visible.").uncertain, false);
 });
+
+test("room reviewer receives the proposed claims and actual fixture list", async () => {
+  const { reviewRoom } = await import("./room-review.js");
+  const { createRoom } = await import("../shared/room.js");
+  const { seed } = await import("./seed.js");
+  const oldFetch = globalThis.fetch, key = process.env.NEBIUS_API_KEY, base = process.env.NEBIUS_BASE_URL;
+  process.env.NEBIUS_API_KEY = "fake"; process.env.NEBIUS_BASE_URL = "https://example.test/v1";
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body));
+    const user = body.messages.find((m: { role: string }) => m.role === "user");
+    const payload = JSON.parse(user.content.find((block: { type: string }) => block.type === "text").text);
+    assert.equal(payload.proposedDescription, "A reading corner.");
+    assert.deepEqual(payload.decisions, ["Add a reading bench"]);
+    assert.ok(payload.actualFixtures.some((fixture: { label: string }) => fixture.label === "Cashier desk"));
+    return Response.json({ id: "test", choices: [{ finish_reason: "stop", message: { role: "assistant", content: "VERDICT: FAIL\nCRITIQUE: A promised fixture is missing." } }], usage: { prompt_tokens: 1, completion_tokens: 1 } });
+  };
+  try {
+    const review = await reviewRoom(createRoom(["books"], "modern"), seed().shelves, "A bookshop", "A reading corner.", ["Add a reading bench"]);
+    assert.equal(review.acceptable, false);
+    assert.match(review.critique, /missing/);
+  } finally {
+    globalThis.fetch = oldFetch;
+    for (const [name, value] of [["NEBIUS_API_KEY", key], ["NEBIUS_BASE_URL", base]]) if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
+  }
+});

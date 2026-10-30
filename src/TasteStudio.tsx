@@ -7,6 +7,7 @@ import type { RoomDesign } from "../shared/room";
 import type { DesignStudy, TastePoint, TasteEntity } from "../shared/research";
 import { api, apiStream, type ProgressEvent } from "./api";
 import { ResearchLoader } from "./ResearchLoader";
+import { reduceLog } from "./research-log";
 
 export function GeographicTasteMap({ points, location, places = [] }: { points: TastePoint[]; location: string; places?: TasteEntity[] }) {
   const mountMap = useCallback((node: HTMLDivElement | null) => {
@@ -55,13 +56,13 @@ export function StudyResults({ study, selectedId, onSelect, compact = false, bui
     {!compact && <div className="direction-section"><div className="direction-heading"><h3>Choose your direction</h3><p>Each concept uses the research differently. Pick one to generate your 3D starting point. Material and lighting ideas are descriptive; the preview uses the available colors, windows, and fixtures.{buildAssets && " If the agent identifies a catalog gap, you can optionally create and review a custom fixture."}</p></div>
       <div className="direction-grid">{study.directions.map((direction, i) => <button type="button" key={direction.id} className={`direction-card ${selectedId === direction.id ? "selected" : ""}`} aria-pressed={selectedId === direction.id} onClick={() => onSelect?.(direction.id)}>
         <span className="direction-number">0{i + 1} <span>{selectedId === direction.id ? "SELECTED" : "EXPLORE"}</span></span>
-        <h4>{direction.name}</h4><p>{direction.description}</p>
+        <h4>{direction.name}</h4><p>{direction.description}</p><span className="direction-changes"><strong>Fixtures in this layout:</strong> {direction.room.fixtures.map(fixture => fixture.label).join(" · ")}. Check these against the AI concept; decorative ideas may not be rendered.</span>
         <span className="direction-evidence">Research references: {direction.evidence.map(item => item.name).join(" · ")}</span>
         <span className="direction-colors" aria-label="Proposed colours">{[direction.room.wall, direction.room.floor, direction.room.accent].map((color, index) => <i key={index} style={{ background: color }} />)}</span>
         {direction.circulation && <span className="direction-review"><strong>Circulation estimate:</strong> {direction.circulation.entranceBlocked ? "Entrance path blocked" : `${direction.circulation.reachableFreeAreaPercent}% of sampled free space reachable from the entrance`}. <small>{direction.circulation.note}</small></span>}
         {direction.visualReview && <span className="direction-review"><strong>{direction.visualReview.available === false || direction.visualReview.critique.startsWith("Visual review was unavailable") ? "Visual review unavailable" : direction.visualReview.acceptable ? "Visual review passed" : "Visual review needs attention"}</strong>: {direction.visualReview.critique} <small>Review uses simplified room views without walls or lighting.</small></span>}
         {!!direction.decisions?.length && <span className="direction-decisions">{direction.decisions.map((decision, index) => <span key={index} style={{ display: "block", marginTop: 8 }}><strong>{decision.choice}</strong> — AI interpretation: {decision.interpretation}<br /><small>{decision.evidence.length ? `Qloo references: ${decision.evidence.map(item => item.name).join(", ")}` : "AI suggestion based on the brief or practical needs"}</small></span>)}</span>}
-        <span className="direction-changes">{direction.changes.length ? direction.changes.slice(0, 2).join(" · ") : "Existing fixture positions retained; edit them in the 3D editor."}</span>
+        <span className="direction-changes">{direction.changes.length ? direction.changes.join(" · ") : "Existing fixture positions retained; edit them in the 3D editor."}</span>
         {buildAssets && direction.assetIdea && <span className="direction-asset"><strong>New fixture idea</strong><br />{direction.assetIdea.brief}<br /><small>{direction.assetIdea.reason}</small></span>}
       </button>)}</div></div>}
     {selectedDirection && <section className="study-map-section" aria-label="Evidence for selected direction">
@@ -99,18 +100,9 @@ export function TasteStudio({ brief, onBrief, room, forNewProject, study, onStud
     abortRef.current = abort;
     try {
       const result = await apiStream<DesignStudy>("/ai/research", { brief, room, forNewProject },
-        // Transient rows collapse: "thinking" ticks replace each other, and a tool's
-        // resolved result overwrites its own still-active row instead of stacking.
         event => {
-        if (event.phase === "thinking") setStep(n => n + 1);
-        setEvents(current => {
-          const kept = current.filter(item => item.phase !== "thinking");
-          if (event.status !== "active") {
-            const open = kept.findIndex(item => item.status === "active" && item.label === event.label);
-            if (open !== -1) return kept.map((item, i) => (i === open ? event : item));
-          }
-          return [...kept, event];
-        });
+          if (event.phase === "thinking") setStep(n => n + 1);
+          setEvents(current => reduceLog(current, event));
         }, abort.signal);
       onStudy(result);
     }

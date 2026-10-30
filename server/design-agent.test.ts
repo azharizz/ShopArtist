@@ -4,7 +4,7 @@ import { createRoom, fixtureCatalog, fixtureKinds, validateRoom } from "../share
 import { assetRenderers } from "../shared/asset-renderers.js";
 import { existsSync } from "node:fs";
 import { seed } from "./seed.js";
-import { runDesignAgent, buildDirection, researchToolNames, validateTasteTagIds } from "./design-agent.js";
+import { runDesignAgent, buildDirection, researchToolNames, validateTasteTagIds, reviewFailureReason, selectPlaceTags } from "./design-agent.js";
 import { getAssetDetails, listAssets } from "./asset-tools.js";
 import type { AssetDefinition } from "../shared/assets/types.js";
 
@@ -76,15 +76,15 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     }
     else {
       name = "create_design_directions";
-      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal.", evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
+      const make = (name: string, accent: string) => ({ name, description: "A welcoming space informed by the charming taste signal.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [{ choice: "Mood", interpretation: "A welcoming palette expresses the charming signal. ".repeat(7), evidence_ids: [evidence] }], style: "modern", wall: "#fffafa", floor: "#ccbbaa", accent, window: "grid", asset_idea: { brief: "A small display for featured books", reason: "Highlights books in the shop", reference_id: "bench" }, moves: [], additions: [] as { kind: string; x: number; z: number; rotation: number; reason: string }[] });
       const direction = calls === 9 ? make("Vibrant stories", "#50a080") : make("Quiet romance", "#c05080");
       if (calls === 5) direction.description = "Short description under 500 chars";
       if (calls === 6) {
         assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("not a placeholder")));
-        direction.asset_idea.brief = "A reading table with a fabric cover";
+        direction.wall = "not-a-colour";
       }
       if (calls === 7) {
-        assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("lamps, fabric and textures cannot be generated")));
+        assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("wall:")));
         direction.additions = [{ kind: "plant", x: 0, z: 0, rotation: 0, reason: "Natural accent" }];
       }
       if (calls === 8) {
@@ -92,7 +92,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
         assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Only add non-shelf assets whose details")));
       }
       if (calls === 9) assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Rejected proposals") && m.content.includes("Quiet romance")));
-      args = { directions: calls === 8 ? [{ ...make("Invalid decoration", "#aabbcc"), description: "A cozy interior decorated with curtains and reading benches." }, direction] : calls === 9 ? JSON.stringify([direction]) : [direction] };
+      args = { directions: calls === 8 ? [{ ...make("Invalid decoration", "#aabbcc"), evidence_ids: [] }, direction] : calls === 9 ? JSON.stringify([direction]) : [direction] };
       assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Charming")));
       assert.ok(body.messages.some((m: { role: string; content: string }) => m.role === "tool" && m.content.includes("Padded bench") && m.content.includes("coloring")));
     }
@@ -111,6 +111,7 @@ test("AI Agent searches Qloo, uses real evidence and generates validated distinc
     assert.match(result.directions[1].visualReview?.critique ?? "", /unavailable/);
     assert.equal(result.directions[0].evidence[0].id, evidence);
     assert.equal(result.directions[0].decisions?.[0].evidence[0].id, evidence);
+    assert.ok((result.directions[0].decisions?.[0].interpretation.length ?? 0) > 250);
     assert.notEqual(result.directions[0].room.accent, result.directions[1].room.accent);
     assert.deepEqual(result.directions[0].room.fixtures.find(f => f.kind === customAsset.id)?.asset, customAsset);
     for (const direction of result.directions) assert.deepEqual(validateRoom(direction.room, shelves), []);
@@ -122,7 +123,24 @@ test("out-of-bounds proposals report a boundary failure instead of silently movi
   const room = createRoom(["coffee", "books"], "modern"), shelves = seed().shelves;
   const direction = buildDirection({ name: "Test", description: "A practical and welcoming place for people.", evidence_ids: [evidence], furniture: null, frame: null, decisions: [], style: "modern", wall: "#ffffff", floor: "#ffffff", accent: "#ffffff", window: "grid", moves: [{ fixture_id: room.fixtures[0].id, x: 999, z: 999, rotation: 0, reason: "Test" }], additions: [], asset_idea: { brief: "", reason: "", reference_id: "" } }, room, shelves, [{ id: evidence, name: "Charming", type: "tag" }], Object.values(fixtureCatalog));
   assert.match(direction.changes[0], /could not fit/);
+  assert.match(direction.changes[0], /footprint.*Room/);
   assert.equal(direction.room.fixtures[0].x, room.fixtures[0].x);
+});
+
+test("review failure diagnostics classify errors without exposing details", () => {
+  assert.equal(reviewFailureReason(new Error("request timed out secret")), "timed out");
+  assert.equal(reviewFailureReason(new Error("Visual reviewer returned an invalid assessment.")), "invalid or empty response");
+  assert.equal(reviewFailureReason({ status: 503 }), "provider error 503");
+  assert.equal(reviewFailureReason(new Error("secret internal details")), "unexpected error");
+});
+
+test("place categories use exact returned IDs and a repeated omission falls back without inventing a filter", () => {
+  const id = "urn:tag:category:place:coffee", categories = [{ id, name: "Coffee", type: "tag" }];
+  assert.throws(() => selectPlaceTags(undefined, categories, true, 0), /Coffee/);
+  assert.deepEqual(selectPlaceTags(undefined, categories, true, 1), []);
+  assert.deepEqual(selectPlaceTags([], categories, true, 0), []);
+  assert.deepEqual(selectPlaceTags([id], categories, true, 0), [id]);
+  assert.throws(() => selectPlaceTags(["invented"], categories, true, 0), /exact place category IDs/);
 });
 
 test("circulation estimate detects a blocked entrance and keeps its limitation explicit", async () => {

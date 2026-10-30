@@ -2,15 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ProgressEvent } from "./api.js";
 
-/** Mirrors the reducer in TasteStudio.research(): transient rows collapse. */
-export function reduceLog(current: ProgressEvent[], event: ProgressEvent): ProgressEvent[] {
-  const kept = current.filter(item => item.phase !== "thinking");
-  if (event.status !== "active") {
-    const open = kept.findIndex(item => item.status === "active" && item.label === event.label);
-    if (open !== -1) return kept.map((item, i) => (i === open ? event : item));
-  }
-  return [...kept, event];
-}
+import { reduceLog } from "./research-log.js";
 
 const run = (events: ProgressEvent[]) => events.reduce(reduceLog, [] as ProgressEvent[]);
 
@@ -53,4 +45,9 @@ test("a warn result resolves the active row and is kept", () => {
     { phase: "research", label: "Reading cultural affinities", detail: "12 signals", status: "done" },
   ]);
   assert.deepEqual(log.map(item => item.status), ["warn", "done"]);
+});
+
+test("identical consecutive retries are grouped", () => {
+  const log = run([{ phase: "research", label: "Research", status: "active" }, { phase: "research", label: "Research", detail: "Retrying", status: "warn" }, { phase: "research", label: "Research", status: "active" }, { phase: "research", label: "Research", detail: "Retrying", status: "warn" }]);
+  assert.equal(log.length, 1); assert.equal(log[0].count, 2);
 });

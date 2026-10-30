@@ -32,11 +32,11 @@ export async function renderRoomViews(room: RoomDesign, shelves: Shelf[]) {
   return renderGroupViews(scene, [{ name: "Top", position: [0, 5, .01] }, { name: "Entrance", position: [0, 2, 5] }, { name: "Three-quarter", position: [4, 3, 5] }]);
 }
 
-export async function reviewRoom(room: RoomDesign, shelves: Shelf[], brief: string) {
+export async function reviewRoom(room: RoomDesign, shelves: Shelf[], brief: string, description = "", decisions: string[] = []) {
   const image = await renderRoomViews(room, shelves);
   const response = await createAgentClient().messages.create({ model: process.env.AI_VISION_MODEL || "nvidia/Nemotron-3.5-Super-VL", max_tokens: 4096,
-    system: "You are a skeptical, honest and accurate shop layout reviewer. Assess only the visible geometry. These are the same room from three rotated camera viewpoints; apparent left/right wall changes are expected. The floor is visible, but walls, door, lighting, textures and text are omitted. Do not infer the door or wall positions. Mention only clearly visible layout problems. Do not invent features or claim compliance. Return exactly VERDICT: PASS or FAIL followed by CRITIQUE: and a concise explanation.",
-    messages: [{ role: "user", content: [{ type: "text", text: `Shop concept: ${brief}. Review these top, entrance and three-quarter views for coherence and obstruction.` }, { type: "image", source: { type: "base64", media_type: "image/png", data: image.toString("base64") } }] }],
+    system: "You are a skeptical, honest and accurate shop layout reviewer. Assess visible geometry and compare the proposed description and decisions with the actual fixture list. Flag concrete fixtures claimed as present but not present; allow generic or stylistic descriptions and avoid guessing. These are the same room from three rotated camera viewpoints; apparent left/right wall changes are expected. The floor is visible, but walls, door, lighting, textures and text are omitted. Do not infer the door or wall positions. Mention only clearly visible layout problems or clear fixture-list contradictions. Do not invent features or claim compliance. Return exactly VERDICT: PASS or FAIL followed by CRITIQUE: and a concise explanation.",
+    messages: [{ role: "user", content: [{ type: "text", text: JSON.stringify({ concept: brief, proposedDescription: description, decisions, actualFixtures: room.fixtures.map(fixture => ({ label: fixture.label, kind: fixture.kind })), instruction: "Review the three room views and check claims against the actual fixture list." }) }, { type: "image", source: { type: "base64", media_type: "image/png", data: image.toString("base64") } }] }],
   }, { timeout: 20000 });
   const text = response.content.filter(block => block.type === "text").map(block => block.text).join("\n");
   return parseRoomReview(text);
@@ -44,7 +44,7 @@ export async function reviewRoom(room: RoomDesign, shelves: Shelf[], brief: stri
 
 export function parseRoomReview(text: string) {
   const verdict = text.match(/VERDICT\s*:\s*(PASS|FAIL)/i), critique = text.match(/CRITIQUE\s*:\s*([\s\S]+)/i);
-  if (!verdict || !critique) { if (process.env.AI_DEBUG === "1") console.warn("Room review response:", text.slice(0, 1200)); throw new Error("Visual reviewer returned an invalid assessment."); }
+  if (!verdict || !critique) throw new Error("Visual reviewer returned an invalid assessment.");
   const description = critique[1].trim().slice(0, 1000);
   // shortcut: reject unverified cross-view contradiction claims until the model can reference individual fixtures reliably.
   const uncertain = /(?:view|perspective)[\s\S]{0,180}(?:mismatch|inconsisten|contradict|incoheren)|(?:mismatch|inconsisten|contradict|incoheren)[\s\S]{0,180}(?:view|perspective)/i.test(description);

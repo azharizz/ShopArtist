@@ -37,6 +37,7 @@ export interface ProgressEvent {
   label: string;
   detail?: string;
   status: "active" | "done" | "warn";
+  count?: number;
 }
 /**
  * POSTs and reads a text/event-stream, calling onProgress per `progress` event and

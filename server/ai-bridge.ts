@@ -46,7 +46,7 @@ export function createAgentClient() {
       if (typeof message.content === "string" && message.content) content.push({ type: "text", text: message.content });
       for (const call of message.tool_calls ?? []) {
         let args: unknown;
-        try { args = JSON.parse(call.function?.arguments ?? "{}"); } catch { args = {}; }
+        try { args = JSON.parse(call.function?.arguments ?? "{}"); } catch { args = { __invalid_tool_json: true }; }
         content.push({ type: "tool_use", id: call.id, name: call.function?.name, input: args });
       }
       return Response.json({ id: result.id || "agent-message", type: "message", role: "assistant", model: input.model, content,

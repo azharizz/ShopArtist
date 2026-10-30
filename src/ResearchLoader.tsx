@@ -184,7 +184,7 @@ export function ResearchLoader({
                       : "▸"}
                 </span>
                 <span className="loader-text">
-                  <strong>{event.label}</strong>
+                  <strong>{event.label}{event.count && event.count > 1 ? ` (${event.count} attempts)` : ""}</strong>
                   {event.detail && <small>{event.detail}</small>}
                 </span>
               </div>
