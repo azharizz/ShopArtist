@@ -178,5 +178,9 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
     }
     messages.push({ role: "user", content: results });
   }
+  if (research && pendingDirections.length) {
+    research.warnings.push("Only one direction passed the checks within the agent step limit. You can research again for alternatives.");
+    return { id: randomUUID(), brief: { ...brief, tags: chosenTags }, research, directions: pendingDirections, createdAt: new Date().toISOString() };
+  }
   throw new Error("AI Agent could not finish the research within its step limit. Try a shorter concept.");
 }
