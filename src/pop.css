@@ -2074,6 +2074,7 @@ summary:focus-visible {
 }
 /* The map section spans the full width even when results are two columns,
    so the geography is actually visible instead of squeezed into a cell. */
+.editor-taste-overview .study-results.compact > .study-summary,
 .study-results.compact > .study-map-section,
 .editor-taste-overview .study-results.compact > .study-map-section {
   grid-column: 1 / -1;
