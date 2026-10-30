@@ -1,4 +1,4 @@
-import { assetRenderers } from "./assets";
+import { assetRenderers } from "../shared/asset-renderers";
 import { buildGeneratedGeometry } from "../shared/generated-assets";
 import { useCallback, useRef, useState } from "react";
 import * as THREE from "three";

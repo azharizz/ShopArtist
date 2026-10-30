@@ -23,6 +23,9 @@ test("curated assets remain valid and old shared copies do not duplicate them", 
     const asset = curatedAssets[0];
     await writeFile(path.join(directory, "mcp-assets", `${asset.id}.json`), JSON.stringify(asset));
     await client.connect(new StdioClientTransport({ command: process.execPath, args: ["--import", "tsx", "server/asset-mcp.ts"], cwd: process.cwd(), env: { ...process.env, DATA_DIR: directory } as Record<string, string> }));
+    const original = await client.callTool({ name: "inspect_asset", arguments: { id: "cashier" } });
+    assert.equal(original.isError, undefined);
+    assert.match(JSON.stringify(original.content), /export function renderAsset/);
     const result = await client.callTool({ name: "list_assets", arguments: {} });
     const block = (result.content as Array<{ type: string; text?: string }>).find(item => item.type === "text");
     const entries = JSON.parse(block!.text!) as { id: string }[];

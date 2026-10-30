@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { assetRenderers } from "../src/assets/index.js";
+import { assetRenderers } from "../shared/asset-renderers.js";
 import { buildGeneratedGeometry } from "../shared/generated-assets.js";
 import { fixtureSize, stylePalettes, type RoomDesign } from "../shared/room.js";
 import type { Shelf } from "../shared/types.js";

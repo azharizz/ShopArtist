@@ -17,7 +17,7 @@ server.registerTool("list_assets", { description: "List the built-in and locally
 server.registerTool("inspect_asset", { description: "Inspect one built-in or shared asset, including its geometry or built-in source code.", inputSchema: { id: z.string().min(1).max(80) } }, async ({ id }) => {
   const asset = [...Object.values(fixtureCatalog), ...allSharedAssets()].find(item => item.id === id);
   if (!asset) return { isError: true, content: [{ type: "text", text: "Asset not found." }] };
-  const source = Object.hasOwn(fixtureCatalog, id) ? readFileSync(new URL(`../src/assets/${id}.ts`, import.meta.url), "utf8") : undefined;
+  const source = Object.hasOwn(fixtureCatalog, id) ? readFileSync(new URL(`../shared/assets/${id}.ts`, import.meta.url), "utf8") : undefined;
   return { content: [{ type: "text", text: JSON.stringify({ asset, ...(source ? { source } : {}) }) }] };
 });
 server.registerTool("preview_asset", { description: "Validate an asset draft and render front, side, and three-quarter images. Review the returned image before saving. Coordinates and dimensions are in metres; y is part centre. Supported shapes: box and vertical cylinder; colors: accent, wood, frame or #RRGGBB.", inputSchema: assetInputSchema.shape }, async input => {

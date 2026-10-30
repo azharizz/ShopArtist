@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { fixtureCatalog, fixtureKinds, createRoom, stylePalettes } from "../shared/room";
-import { assetRenderers } from "./assets";
+import { assetRenderers } from "../shared/asset-renderers";
 import { buildGeneratedGeometry } from "../shared/generated-assets";
 import type { AssetDefinition } from "../shared/assets/types";
 import { api } from "./api";
-import type { AssetRenderContext } from "./assets/context";
+import type { AssetRenderContext } from "../shared/asset-render-context";
 import "./asset-catalog.css";
 
 const root = document.querySelector<HTMLElement>("#catalog")!;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRoom, fixtureCatalog, fixtureKinds, validateRoom } from "../shared/room.js";
-import { assetRenderers } from "../src/assets/index.js";
+import { assetRenderers } from "../shared/asset-renderers.js";
 import { existsSync } from "node:fs";
 import { seed } from "./seed.js";
 import { runDesignAgent, buildDirection, researchToolNames, validateTasteTagIds } from "./design-agent.js";
@@ -22,7 +22,7 @@ test("every fixture has a shared catalog entry and matching renderer", () => {
     assert.ok(asset.width > 0 && asset.depth > 0 && asset.heightApprox > 0 && asset.description && asset.function && asset.coloring);
     assert.ok(asset.moodTags.length > 0);
     assert.equal(asset.visualReference, `/asset-catalog.html#${kind}`);
-    assert.equal(asset.implementation, `src/assets/${kind}.ts`);
+    assert.equal(asset.implementation, `shared/assets/${kind}.ts`);
     assert.ok(existsSync(asset.implementation));
     assert.equal(typeof assetRenderers[kind], "function");
   }

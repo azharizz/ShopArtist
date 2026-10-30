@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { Fixture, RoomDesign } from "../../shared/room";
-import type { Placement, Product, Shelf } from "../../shared/types";
+import type { Fixture, RoomDesign } from "./room.js";
+import type { Placement, Product, Shelf } from "./types.js";
 
 export interface AssetRenderContext {
   fixture: Fixture;

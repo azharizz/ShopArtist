@@ -78,7 +78,7 @@ export async function createAssetWithAgent(request: string, reference: AssetDefi
       if (stage === "inspect_reference") {
         if (!reference) throw new Error("No reference selected.");
         const isBuiltin = Object.hasOwn(fixtureCatalog, reference.id);
-        result = { asset: reference, ...(isBuiltin ? { source: readFileSync(new URL(`../src/assets/${reference.id}.ts`, import.meta.url), "utf8") } : {}) };
+        result = { asset: reference, ...(isBuiltin ? { source: readFileSync(new URL(`../shared/assets/${reference.id}.ts`, import.meta.url), "utf8") } : {}) };
         stage = "plan_asset";
       } else if (stage === "plan_asset") {
         const plan = z.object({ brief: z.string().min(5).max(1000), construction: z.string().min(5).max(1000) }).strict().parse(call.input);
