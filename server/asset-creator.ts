@@ -44,7 +44,7 @@ const stageLabel: Record<string, string> = {
 export async function createAssetWithAgent(request: string, reference: AssetDefinition | undefined, save: (asset: AssetDefinition) => void, services = { renderAssetViews, reviewAssetImage }, onProgress: AssetProgress = () => {}) {
   const report: AssetProgress = event => { try { onProgress(event); } catch {} };
   const client = createAgentClient();
-  const model = process.env.NEBIUS_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507";
+  const model = process.env.AGENT_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507";
   const messages: MessageParam[] = [{ role: "user", content: JSON.stringify({ request, referenceId: reference?.id ?? null }) }];
   let stage = reference ? "inspect_reference" : "plan_asset";
   let draft: z.infer<typeof draftSchema> | undefined;

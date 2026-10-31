@@ -2,9 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 
 /** Translate the Claude SDK's non-streaming Messages requests to the configured model gateway. */
 export function createAgentClient() {
-  const key = process.env.NEBIUS_API_KEY;
+  const key = process.env.AGENT_API_KEY;
   if (!key) throw new Error("AI Agent is not configured. Add the server's AI API key and try again.");
-  const base = (process.env.NEBIUS_BASE_URL || "https://api.tokenfactory.nebius.com/v1").replace(/\/$/, "");
+  const base = (process.env.AGENT_BASE_URL || "https://api.tokenfactory.nebius.com/v1").replace(/\/$/, "");
   if (!/^https:\/\//i.test(base)) throw new Error("AI Agent requires an HTTPS provider URL.");
   return new Anthropic({
     apiKey: "local-agent-bridge", baseURL: "https://agent.invalid", maxRetries: 0, timeout: 90000,

@@ -500,8 +500,8 @@ app.post("/api/brief", (req, res) => {
 });
 app.get("/api/agent", (_req, res) =>
   res.json({
-    available: Boolean(process.env.NEBIUS_API_KEY),
-    model: process.env.NEBIUS_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    available: Boolean(process.env.AGENT_API_KEY),
+    model: process.env.AGENT_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507",
   }),
 );
 const agentTimes = new Map<string, number[]>();

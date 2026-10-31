@@ -195,7 +195,7 @@ export async function runDesignAgent(brief: DesignBrief, room: RoomDesign, shelv
   const report: AgentProgress = event => { try { onProgress(event); } catch {} };
   if (!(brief.direction || brief.purpose).trim()) throw new Error("Describe the shop idea first, so the AI Agent can research the right taste.");
   const client = createAgentClient();
-  const model = process.env.NEBIUS_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507";
+  const model = process.env.AGENT_MODEL || "Qwen/Qwen3-235B-A22B-Instruct-2507";
   // Models mangle UUIDs; they see short stable aliases and the server maps them back.
   const aliasOf = new Map<string, string>(), idOf = new Map<string, string>();
   const addAlias = (id: string, prefix: string) => { if (aliasOf.has(id)) return; const a = `${prefix}${aliasOf.size + 1}`; aliasOf.set(id, a); idOf.set(a, id); };

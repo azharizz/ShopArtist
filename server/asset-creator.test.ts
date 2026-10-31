@@ -15,9 +15,9 @@ test("bookshelf check rejects a blocked shelf", () => {
 
 test("asset creator inspects reference, repairs invalid geometry, tests and saves a usable asset", async () => {
   const originalFetch = globalThis.fetch;
-  const keys = ["NEBIUS_API_KEY", "NEBIUS_BASE_URL", "NEBIUS_MODEL"] as const;
+  const keys = ["AGENT_API_KEY", "AGENT_BASE_URL", "AGENT_MODEL"] as const;
   const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
-  process.env.NEBIUS_API_KEY = "fake"; process.env.NEBIUS_BASE_URL = "https://example.test/v1"; process.env.NEBIUS_MODEL = "test-model";
+  process.env.AGENT_API_KEY = "fake"; process.env.AGENT_BASE_URL = "https://example.test/v1"; process.env.AGENT_MODEL = "test-model";
   let calls = 0, saved: AssetDefinition | undefined;
   const part = { shape: "box", width: 1.2, height: 0.8, depth: 0.6, x: 0, y: 0.4, z: 0, color: "accent" };
   const draft = { label: "DisplayTable", description: "A small display table.", function: "Display books and objects.", moodTags: ["cozy"], parts: [part] };
@@ -52,8 +52,8 @@ test("asset creator inspects reference, repairs invalid geometry, tests and save
 
 test("visual review revises twice, stops at three reviews, and saves with concerns", async () => {
   const originalFetch = globalThis.fetch;
-  const oldKey = process.env.NEBIUS_API_KEY, oldBase = process.env.NEBIUS_BASE_URL;
-  process.env.NEBIUS_API_KEY = "fake"; process.env.NEBIUS_BASE_URL = "https://example.test/v1";
+  const oldKey = process.env.AGENT_API_KEY, oldBase = process.env.AGENT_BASE_URL;
+  process.env.AGENT_API_KEY = "fake"; process.env.AGENT_BASE_URL = "https://example.test/v1";
   const stages: string[] = [], feedback: string[] = [];
   const shape = { shape: "box", width: 1, height: .8, depth: .6, x: 0, y: .4, z: 0, color: "accent" };
   globalThis.fetch = async (_input, init) => {
@@ -77,5 +77,5 @@ test("visual review revises twice, stops at three reviews, and saves with concer
     assert.equal(result.asset.visualReviews?.length, 3);
     assert.equal(result.asset.visualReviews?.at(-1)?.acceptable, false);
     assert.deepEqual(saved, result.asset);
-  } finally { globalThis.fetch = originalFetch; if (oldKey === undefined) delete process.env.NEBIUS_API_KEY; else process.env.NEBIUS_API_KEY = oldKey; if (oldBase === undefined) delete process.env.NEBIUS_BASE_URL; else process.env.NEBIUS_BASE_URL = oldBase; }
+  } finally { globalThis.fetch = originalFetch; if (oldKey === undefined) delete process.env.AGENT_API_KEY; else process.env.AGENT_API_KEY = oldKey; if (oldBase === undefined) delete process.env.AGENT_BASE_URL; else process.env.AGENT_BASE_URL = oldBase; }
 });

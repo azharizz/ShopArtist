@@ -7,8 +7,8 @@ import { allSharedAssets } from "./shared-assets.js";
 
 test("AI sidekick validates tool plans and leaves the original room unchanged", async () => {
   const originalFetch = globalThis.fetch;
-  const previousKey = process.env.NEBIUS_API_KEY;
-  process.env.NEBIUS_API_KEY = "test-key";
+  const previousKey = process.env.AGENT_API_KEY;
+  process.env.AGENT_API_KEY = "test-key";
   const state = seed();
   const room = state.plans[0].room;
   const original = structuredClone(room);
@@ -27,8 +27,8 @@ test("AI sidekick validates tool plans and leaves the original room unchanged", 
     assert.deepEqual(room, original);
   } finally {
     globalThis.fetch = originalFetch;
-    if (previousKey === undefined) delete process.env.NEBIUS_API_KEY;
-    else process.env.NEBIUS_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.AGENT_API_KEY;
+    else process.env.AGENT_API_KEY = previousKey;
   }
 });
 
@@ -42,12 +42,12 @@ test("local commands spawn catalog bookcases by count and delete fixtures by kin
   const removed = await proposeDesign("delete the plants", room, state.shelves, "local", catalog);
   assert.ok(removed.room.fixtures.every(fixture => fixture.kind !== "plant"));
   const bookcase = catalog.find(asset => /bookcase/i.test(asset.label))!;
-  const originalFetch = globalThis.fetch, previousKey = process.env.NEBIUS_API_KEY;
-  process.env.NEBIUS_API_KEY = "test-key";
+  const originalFetch = globalThis.fetch, previousKey = process.env.AGENT_API_KEY;
+  process.env.AGENT_API_KEY = "test-key";
   globalThis.fetch = async () => Response.json({ choices: [{ message: { tool_calls: [{ id: "c", function: { name: "propose_edits", arguments: JSON.stringify({ message: "Added.", commands: [{ action: "spawn", kind: bookcase.label, count: 1 }] }) } }] }, finish_reason: "tool_calls" }] });
   try {
     const byLabel = await proposeDesign("add a bookcase", room, state.shelves, "ai", catalog);
     assert.equal(byLabel.room.fixtures.at(-1)?.kind, bookcase.id);
-  } finally { globalThis.fetch = originalFetch; if (previousKey === undefined) delete process.env.NEBIUS_API_KEY; else process.env.NEBIUS_API_KEY = previousKey; }
+  } finally { globalThis.fetch = originalFetch; if (previousKey === undefined) delete process.env.AGENT_API_KEY; else process.env.AGENT_API_KEY = previousKey; }
   await assert.rejects(proposeDesign("delete the shelves", room, state.shelves, "local", catalog), /cannot be removed|Nothing called/);
 });

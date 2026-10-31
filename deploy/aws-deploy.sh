@@ -2,7 +2,7 @@
 # Deploys ShopArtist to AWS: one Lambda behind a streaming Function URL, with S3 (durable data) and
 # DynamoDB (global cap on AI actions). Safe to re-run; it updates what exists. Creates only shopartist-* resources.
 #
-#   deploy/aws-deploy.sh <aws-profile> <env-file with NEBIUS_API_KEY, NEBIUS_BASE_URL, NEBIUS_MODEL, QLOO_API_KEY>
+#   deploy/aws-deploy.sh <aws-profile> <env-file with AGENT_API_KEY, AGENT_BASE_URL, AGENT_MODEL, QLOO_API_KEY>
 #
 # Optional: AWS_REGION (default us-east-1), AGENT_USE_LIMIT (default 200), LWA_VERSION (Lambda Web Adapter layer version).
 set -euo pipefail
@@ -59,10 +59,10 @@ LAYER=$LAYER_BASE:$LWA
 node -e '
 const fs = require("fs");
 const env = Object.fromEntries(fs.readFileSync(process.argv[1], "utf8").split("\n").filter(l => /^[A-Z_]+=/.test(l)).map(l => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1).replace(/^["\x27]|["\x27]$/g, "")]));
-const keep = ["NEBIUS_API_KEY", "NEBIUS_BASE_URL", "NEBIUS_MODEL", "QLOO_API_KEY", "AI_VISION_MODEL"];
+const keep = ["AGENT_API_KEY", "AGENT_BASE_URL", "AGENT_MODEL", "QLOO_API_KEY", "AI_VISION_MODEL"];
 const Variables = Object.fromEntries(keep.filter(k => env[k]).map(k => [k, env[k]]));
 Object.assign(Variables, { STORE_BUCKET: process.argv[2], USAGE_TABLE: process.argv[3], AGENT_USE_LIMIT: process.argv[4], PORT: "8080", AWS_LAMBDA_EXEC_WRAPPER: "/opt/bootstrap", AWS_LWA_INVOKE_MODE: "response_stream", AWS_LWA_PORT: "8080" });
-for (const k of ["NEBIUS_API_KEY", "QLOO_API_KEY"]) if (!Variables[k]) { console.error("Missing " + k + " in the env file"); process.exit(1); }
+for (const k of ["AGENT_API_KEY", "QLOO_API_KEY"]) if (!Variables[k]) { console.error("Missing " + k + " in the env file"); process.exit(1); }
 fs.writeFileSync(process.argv[5], JSON.stringify({ Variables }), { mode: 0o600 });
 ' "$ENVFILE" "$BUCKET" "$TABLE" "$LIMIT" "$OUT/env.json"
 RUNTIME=nodejs24.x

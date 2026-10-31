@@ -3,8 +3,8 @@ import { test } from "node:test";
 import { reviewAssetImage } from "./asset-review.js";
 
 test("visual reviewer receives the rendered image and returns a specific critique", async () => {
-  const oldFetch = globalThis.fetch, key = process.env.NEBIUS_API_KEY, base = process.env.NEBIUS_BASE_URL, model = process.env.AI_VISION_MODEL;
-  process.env.NEBIUS_API_KEY = "fake"; process.env.NEBIUS_BASE_URL = "https://example.test/v1"; process.env.AI_VISION_MODEL = "vision-test";
+  const oldFetch = globalThis.fetch, key = process.env.AGENT_API_KEY, base = process.env.AGENT_BASE_URL, model = process.env.AI_VISION_MODEL;
+  process.env.AGENT_API_KEY = "fake"; process.env.AGENT_BASE_URL = "https://example.test/v1"; process.env.AI_VISION_MODEL = "vision-test";
   globalThis.fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body));
     assert.equal(body.model, "vision-test");
@@ -18,7 +18,7 @@ test("visual reviewer receives the rendered image and returns a specific critiqu
     assert.deepEqual(result, { acceptable: false, critique: "One side support is missing.", improvements: "Add a second side support." });
   } finally {
     globalThis.fetch = oldFetch;
-    for (const [name, value] of [["NEBIUS_API_KEY", key], ["NEBIUS_BASE_URL", base], ["AI_VISION_MODEL", model]]) if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
+    for (const [name, value] of [["AGENT_API_KEY", key], ["AGENT_BASE_URL", base], ["AI_VISION_MODEL", model]]) if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
   }
 });
 
@@ -34,8 +34,8 @@ test("room reviewer receives the proposed claims and actual fixture list", async
   const { reviewRoom } = await import("./room-review.js");
   const { createRoom } = await import("../shared/room.js");
   const { seed } = await import("./seed.js");
-  const oldFetch = globalThis.fetch, key = process.env.NEBIUS_API_KEY, base = process.env.NEBIUS_BASE_URL;
-  process.env.NEBIUS_API_KEY = "fake"; process.env.NEBIUS_BASE_URL = "https://example.test/v1";
+  const oldFetch = globalThis.fetch, key = process.env.AGENT_API_KEY, base = process.env.AGENT_BASE_URL;
+  process.env.AGENT_API_KEY = "fake"; process.env.AGENT_BASE_URL = "https://example.test/v1";
   globalThis.fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body));
     const user = body.messages.find((m: { role: string }) => m.role === "user");
@@ -51,6 +51,6 @@ test("room reviewer receives the proposed claims and actual fixture list", async
     assert.match(review.critique, /missing/);
   } finally {
     globalThis.fetch = oldFetch;
-    for (const [name, value] of [["NEBIUS_API_KEY", key], ["NEBIUS_BASE_URL", base]]) if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
+    for (const [name, value] of [["AGENT_API_KEY", key], ["AGENT_BASE_URL", base]]) if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
   }
 });

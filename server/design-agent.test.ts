@@ -48,9 +48,9 @@ test("catalog listing is paginated and details only accept previously listed IDs
 
 test("AI Agent searches Qloo, uses real evidence and generates validated distinct interiors", async () => {
   const originalFetch = globalThis.fetch;
-  const keys = ["NEBIUS_API_KEY", "NEBIUS_BASE_URL", "NEBIUS_MODEL", "QLOO_API_KEY"] as const;
+  const keys = ["AGENT_API_KEY", "AGENT_BASE_URL", "AGENT_MODEL", "QLOO_API_KEY"] as const;
   const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
-  process.env.NEBIUS_API_KEY = "fake-ai-key"; process.env.NEBIUS_BASE_URL = "https://example.test/v1"; process.env.NEBIUS_MODEL = "test-model"; process.env.QLOO_API_KEY = "fake-qloo-key";
+  process.env.AGENT_API_KEY = "fake-ai-key"; process.env.AGENT_BASE_URL = "https://example.test/v1"; process.env.AGENT_MODEL = "test-model"; process.env.QLOO_API_KEY = "fake-qloo-key";
   let calls = 0;
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input));
