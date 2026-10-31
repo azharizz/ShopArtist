@@ -19,6 +19,7 @@ import type { AssetDefinition } from "../shared/assets/types.js";
 import type { DesignStudy } from "../shared/research.js";
 import { researchQloo, searchQloo, searchQlooTags } from "./qloo.js";
 import { inspirationCatalog, researchQueries } from "../shared/design.js";
+import { agentUseLimit, cloudStore, s3Blobs } from "./cloud.js";
 import type { StoreState, Plan, Product } from "../shared/types.js";
 import {
   createRoom,
@@ -37,8 +38,10 @@ if (existsSync(path.join(root, ".env")))
 if (existsSync(path.join(root, "..", ".env")))
   process.loadEnvFile(path.join(root, "..", ".env"));
 const dataDir = process.env.DATA_DIR || path.join(root, "data");
-mkdirSync(dataDir, { recursive: true });
-const db = new DatabaseSync(path.join(dataDir, "shopartist.sqlite"));
+// In the cloud (STORE_BUCKET set) SQLite lives in memory and ./cloud.ts keeps each user's rows in S3.
+const cloudBucket = process.env.STORE_BUCKET;
+if (!cloudBucket) mkdirSync(dataDir, { recursive: true });
+const db = new DatabaseSync(cloudBucket ? ":memory:" : path.join(dataDir, "shopartist.sqlite"));
 db.exec(
   "PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS sandboxes (id TEXT PRIMARY KEY, state TEXT NOT NULL, updated_at TEXT NOT NULL)",
 );
@@ -75,6 +78,13 @@ const sessions = new WeakMap<
   express.Request,
   { id: string; state: StoreState }
 >();
+if (cloudBucket) {
+  app.set("trust proxy", true); // the Function URL terminates HTTPS, so cookies can be Secure
+  cloudStore(app, db, await s3Blobs(cloudBucket), req => sessions.get(req)?.id, () => studies);
+}
+// A global cap on AI actions: one per research, build, asset generation or AI edit; agent steps do not count.
+const countUse = await agentUseLimit(process.env.USAGE_TABLE, Number(process.env.AGENT_USE_LIMIT || 200));
+const countAgentUse: express.RequestHandler = (req, res, next) => req.body?.mode === "ai" || req.body?.mode === "openai" || req.body?.remote ? countUse(req, res, next) : next();
 const generationTimes = new Map<string, number[]>();
 const roomSchema = z.object({
   focuses: z
@@ -299,7 +309,7 @@ function getStudy(id: string, owner: string, forNewProject: boolean, projectId?:
   return record.study;
 }
 const activeBuilds = new Set<string>();
-app.post("/api/projects/create", async (req, res) => {
+app.post("/api/projects/create", countUse, async (req, res) => {
   const input = z
     .object({
       name: z.string().trim().min(1).max(80),
@@ -410,7 +420,7 @@ function limitQloo(req: express.Request, res: express.Response, next: express.Ne
   qlooGlobalTimes.push(now);
   next();
 }
-app.post("/api/assets/generate", limitQloo, async (req, res) => {
+app.post("/api/assets/generate", limitQloo, countUse, async (req, res) => {
   const input = z.object({ request: z.string().trim().min(5).max(500), referenceId: z.string().max(80).optional() }).strict().parse(req.body);
   const owner = sessions.get(req)!.id;
   const catalog = assetsFor(owner);
@@ -422,7 +432,7 @@ app.post("/api/assets/generate", limitQloo, async (req, res) => {
   });
   res.json(result);
 });
-app.post("/api/ai/research", limitQloo, async (req, res) => {
+app.post("/api/ai/research", limitQloo, countUse, async (req, res) => {
   const input = z.object({ brief: briefSchema, room: roomSchema, forNewProject: z.boolean().default(false) }).parse(req.body);
   const session = sessions.get(req)!;
   const shelves = input.forNewProject ? seed().shelves : session.state.shelves;
@@ -495,7 +505,7 @@ app.get("/api/agent", (_req, res) =>
   }),
 );
 const agentTimes = new Map<string, number[]>();
-app.post("/api/agent", async (req, res) => {
+app.post("/api/agent", countAgentUse, async (req, res) => {
   const { id, state } = sessions.get(req)!;
   const input = z
     .object({

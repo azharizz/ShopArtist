@@ -151,3 +151,4 @@ vite.config.ts.timestamp-*
 # Local shop data
 data/
 .DS_Store
+.lambda-build/
